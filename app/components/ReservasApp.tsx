@@ -14,6 +14,7 @@ type Producto = {
   categoria: string;
   imagen_url?: string;
   precio?: number;
+  activo: boolean;
 };
 
 type ProductoConCantidad = Producto & { cantidad: number };
@@ -81,7 +82,7 @@ export default function ReservasApp() {
 
   const cargarProductos = async () => {
     setCargando(true);
-    const { data, error } = await supabase.from("productos").select("*").eq("activo", true).order("categoria").order("nombre");
+    const { data, error } = await supabase.from("productos").select("*").order("categoria").order("nombre");
     if (!error && data) setProductos(data);
     setCargando(false);
   };
@@ -214,6 +215,10 @@ export default function ReservasApp() {
 
   const cancelarEdicion = () => { setFormProd(FORM_VACIO); setEditandoId(null); };
 
+  const toggleActivo = async (id: number, activo: boolean) => {
+  await supabase.from("productos").update({ activo: !activo }).eq("id", id);
+  setProductos(prev => prev.map(p => p.id === id ? { ...p, activo: !activo } : p));
+};
   const eliminarProducto = async (id: number) => {
     await supabase.from("productos").update({ activo: false }).eq("id", id);
     setProductos(prev => prev.filter(p => p.id !== id));
@@ -473,9 +478,14 @@ export default function ReservasApp() {
                           </p>
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button style={{ ...s.btnSecondary, padding: "5px 10px", fontSize: 12 }} onClick={() => iniciarEdicion(p)}>✏️ Editar</button>
-                          <button style={{ ...s.btnDanger, padding: "5px 10px", fontSize: 12 }} onClick={() => setConfirmEliminar(p.id)}>🗑️</button>
-                        </div>
+  <button
+    onClick={() => toggleActivo(p.id, p.activo)}
+    style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.activo ? "#e8f5e9" : "#fbe9e7", color: p.activo ? "#2e7d32" : "#c62828", fontWeight: 500 }}>
+    {p.activo ? "✅ Visible" : "🔴 Oculto"}
+  </button>
+  <button style={{ ...s.btnSecondary, padding: "5px 10px", fontSize: 12 }} onClick={() => iniciarEdicion(p)}>✏️ Editar</button>
+  <button style={{ ...s.btnDanger, padding: "5px 10px", fontSize: 12 }} onClick={() => setConfirmEliminar(p.id)}>🗑️</button>
+</div>
                       </>
                     )}
                   </div>
@@ -488,8 +498,8 @@ export default function ReservasApp() {
     );
   }
 
-  const frutas = productos.filter(p => p.categoria === "fruta");
-  const verduras = productos.filter(p => p.categoria === "verdura");
+  const frutas = productos.filter(p => p.categoria === "fruta" && p.activo);
+const verduras = productos.filter(p => p.categoria === "verdura" && p.activo);
 
   const renderGrid = (lista: Producto[]) => lista.map(p => {
     const qty = cantidades[p.id] || 0;
