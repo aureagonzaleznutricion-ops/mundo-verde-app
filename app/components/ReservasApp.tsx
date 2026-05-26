@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -14,6 +13,7 @@ type Producto = {
   unidad: string;
   categoria: string;
   imagen_url?: string;
+  precio?: number;
 };
 
 type ProductoConCantidad = Producto & { cantidad: number };
@@ -29,13 +29,14 @@ type Pedido = {
 };
 
 function exportarCSV(pedidos: Pedido[]) {
-  const filas = [["ID","Fecha","Hora","Cliente","Teléfono","Email","Producto","Cantidad","Unidad","Otros","Estado"]];
+  const filas = [["ID","Fecha","Hora","Cliente","Teléfono","Email","Producto","Cantidad","Unidad","Precio/u","Subtotal","Otros","Estado"]];
   pedidos.forEach(p => {
     if (p.productos.length === 0 && p.otros) {
-      filas.push([String(p.id), p.fecha, p.hora, p.cliente.nombre, p.cliente.telefono, p.cliente.email, "", "", "", p.otros, p.estado]);
+      filas.push([String(p.id), p.fecha, p.hora, p.cliente.nombre, p.cliente.telefono, p.cliente.email, "", "", "", "", "", p.otros, p.estado]);
     } else {
       p.productos.forEach((prod, i) => {
-        filas.push([String(p.id), p.fecha, p.hora, p.cliente.nombre, p.cliente.telefono, p.cliente.email, prod.nombre, String(prod.cantidad), prod.unidad, i === 0 ? (p.otros || "") : "", i === 0 ? p.estado : ""]);
+        const subtotal = ((prod.precio || 0) * prod.cantidad).toFixed(2);
+        filas.push([String(p.id), p.fecha, p.hora, p.cliente.nombre, p.cliente.telefono, p.cliente.email, prod.nombre, String(prod.cantidad), prod.unidad, String(prod.precio || 0), subtotal, i === 0 ? (p.otros || "") : "", i === 0 ? p.estado : ""]);
       });
     }
   });
@@ -46,7 +47,7 @@ function exportarCSV(pedidos: Pedido[]) {
   URL.revokeObjectURL(url);
 }
 
-const FORM_VACIO = { nombre: "", emoji: "🌿", unidad: "kg", categoria: "fruta" };
+const FORM_VACIO = { nombre: "", emoji: "🌿", unidad: "kg", categoria: "fruta", precio: 0 };
 
 export default function ReservasApp() {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -73,20 +74,17 @@ export default function ReservasApp() {
   const hoy = new Date();
   const esFinDeSemana = [5,6,0].includes(hoy.getDay());
 
-  // Cargar productos desde Supabase
   useEffect(() => {
     cargarProductos();
     cargarPedidos();
   }, []);
 
   const cargarProductos = async () => {
-  setCargando(true);
-  const { data, error } = await supabase.from("productos").select("*").eq("activo", true).order("categoria").order("nombre");
-  console.log("Productos:", data);
-  console.log("Error:", error);
-  if (!error && data) setProductos(data);
-  setCargando(false);
-};
+    setCargando(true);
+    const { data, error } = await supabase.from("productos").select("*").eq("activo", true).order("categoria").order("nombre");
+    if (!error && data) setProductos(data);
+    setCargando(false);
+  };
 
   const cargarPedidos = async () => {
     const { data: pedidosData } = await supabase.from("pedidos").select("*").order("creado_at", { ascending: false });
@@ -108,6 +106,10 @@ export default function ReservasApp() {
   };
 
   const productosSeleccionados = productos.filter(p => cantidades[p.id] > 0);
+
+  const totalPedido = productosSeleccionados.reduce((sum, p) => {
+    return sum + ((p.precio || 0) * cantidades[p.id]);
+  }, 0);
 
   const validar = () => {
     const e: Record<string, string> = {};
@@ -142,6 +144,7 @@ export default function ReservasApp() {
         emoji: p.emoji,
         unidad: p.unidad,
         cantidad: cantidades[p.id],
+        precio: p.precio || 0,
       }));
       if (lineas.length > 0) await supabase.from("pedido_productos").insert(lineas);
 
@@ -205,7 +208,7 @@ export default function ReservasApp() {
   };
 
   const iniciarEdicion = (p: Producto) => {
-    setFormProd({ nombre: p.nombre, emoji: p.emoji, unidad: p.unidad, categoria: p.categoria });
+    setFormProd({ nombre: p.nombre, emoji: p.emoji, unidad: p.unidad, categoria: p.categoria, precio: p.precio || 0 });
     setEditandoId(p.id);
   };
 
@@ -250,10 +253,12 @@ export default function ReservasApp() {
     categoriaHeader: { fontSize: 12, fontWeight: 500, color: "#2d6a4f", textTransform: "uppercase" as const, letterSpacing: 1, margin: "1.25rem 0 0.5rem", padding: "0 1rem" },
     error: { color: "#e24b4a", fontSize: 12, marginTop: 4 },
     estadoBadge: (e: string) => ({ fontSize: 11, padding: "2px 8px", borderRadius: 20, fontWeight: 500, background: e === "confirmado" ? "#e8f5e9" : e === "gestionado" ? "#e3f2fd" : "#fff3e0", color: e === "confirmado" ? "#2e7d32" : e === "gestionado" ? "#1565c0" : "#e65100" }),
+    totalBox: { background: "#f0faf4", border: "1px solid #2d6a4f", borderRadius: 10, padding: "0.75rem 1rem", marginTop: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center" },
   };
 
   if (vista === "confirmacion") {
     const ultimo = pedidos[0];
+    const totalConfirmacion = ultimo.productos.reduce((sum, p) => sum + ((p.precio || 0) * p.cantidad), 0);
     return (
       <div style={s.app}>
         <div style={s.header}><h1 style={s.titulo}>🌿 Mundo Verde Pontevedra</h1><p style={s.subtitulo}>Reserva de productos frescos · Pontevedra</p></div>
@@ -261,11 +266,22 @@ export default function ReservasApp() {
           <div style={{ fontSize: 48 }}>✅</div>
           <h2 style={{ color: "#2d6a4f", margin: "0.5rem 0" }}>¡Reserva enviada!</h2>
           <p style={{ color: "#555", fontSize: 14, margin: "0.5rem 0 1.5rem" }}>Gracias, <strong>{ultimo.cliente.nombre}</strong>. Nos pondremos en contacto contigo para confirmar.</p>
-          <div style={{ textAlign: "left", marginBottom: "1rem" }}>
-            {ultimo.productos.map(p => (<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre}</span><span style={{ fontWeight: 500 }}>{p.cantidad} {p.unidad}</span></div>))}
+          <div style={{ textAlign: "left", marginBottom: "0.5rem" }}>
+            {ultimo.productos.map(p => (
+              <div key={p.id} style={s.resumenItem}>
+                <span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span>
+                <span style={{ fontWeight: 500 }}>{((p.precio || 0) * p.cantidad).toFixed(2)} €</span>
+              </div>
+            ))}
             {ultimo.otros && <p style={{ fontSize: 13, color: "#666", marginTop: 8 }}>📝 {ultimo.otros}</p>}
           </div>
-          <button style={s.btnSecondary} onClick={nuevaReserva}>Nueva reserva</button>
+          {totalConfirmacion > 0 && (
+            <div style={s.totalBox}>
+              <span style={{ fontWeight: 500 }}>Total estimado</span>
+              <span style={{ fontSize: 18, fontWeight: 600, color: "#2d6a4f" }}>{totalConfirmacion.toFixed(2)} €</span>
+            </div>
+          )}
+          <button style={{ ...s.btnSecondary, marginTop: "1rem" }} onClick={nuevaReserva}>Nueva reserva</button>
         </div>
       </div>
     );
@@ -317,7 +333,7 @@ export default function ReservasApp() {
         </div>
 
         {panelTab !== "productos" && (
-          <div style={{ display: "flex", gap: 8, padding: "0 1rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, padding: "0 1rem", marginBottom: "1rem", flexWrap: "wrap" as const, alignItems: "center" }}>
             <select style={{ padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--color-border-tertiary)", fontSize: 13, background: "transparent", color: "inherit", cursor: "pointer" }} value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
               <option value="todos">Todos los estados</option>
               <option value="pendiente">Pendientes</option>
@@ -344,25 +360,39 @@ export default function ReservasApp() {
           {panelTab === "pedidos" && (
             pedidosFiltrados.length === 0
               ? <p style={{ color: "#aaa", textAlign: "center", padding: "2rem 0" }}>No hay pedidos</p>
-              : pedidosFiltrados.map(p => (
-                <div key={p.id} style={s.card}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                    <div><strong style={{ fontSize: 14 }}>{p.cliente.nombre}</strong><span style={{ ...s.estadoBadge(p.estado), marginLeft: 8 }}>{p.estado}</span></div>
-                    <span style={{ fontSize: 12, color: "#888" }}>{p.fecha} {p.hora}</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>📞 {p.cliente.telefono} · ✉️ {p.cliente.email}</div>
-                  {p.productos.map((prod: any) => (<div key={prod.id} style={{ ...s.resumenItem, fontSize: 13 }}><span>{prod.emoji} {prod.nombre}</span><span>{parseFloat(prod.cantidad).toFixed(1)} {prod.unidad}</span></div>))}
-                  {p.otros && <div style={{ marginTop: 8, padding: "6px 10px", background: "#fff8e1", borderRadius: 6, fontSize: 12, color: "#5d4037" }}>📝 {p.otros}</div>}
-                  <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-                    {[["pendiente","⏳","#e65100"],["confirmado","✅","#2e7d32"],["gestionado","📦","#1565c0"]].map(([e, icon, color]) => (
-                      <button key={e} onClick={() => cambiarEstado(p.id, e as string)}
-                        style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.estado === e ? color : "var(--color-background-secondary)", color: p.estado === e ? "#fff" : "inherit", fontWeight: p.estado === e ? 500 : 400 }}>
-                        {icon} {(e as string).charAt(0).toUpperCase() + (e as string).slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))
+              : pedidosFiltrados.map(p => {
+                  const totalPed = p.productos.reduce((sum: number, prod: any) => sum + ((prod.precio || 0) * parseFloat(prod.cantidad)), 0);
+                  return (
+                    <div key={p.id} style={s.card}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div><strong style={{ fontSize: 14 }}>{p.cliente.nombre}</strong><span style={{ ...s.estadoBadge(p.estado), marginLeft: 8 }}>{p.estado}</span></div>
+                        <span style={{ fontSize: 12, color: "#888" }}>{p.fecha} {p.hora}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>📞 {p.cliente.telefono} · ✉️ {p.cliente.email}</div>
+                      {p.productos.map((prod: any) => (
+                        <div key={prod.id} style={{ ...s.resumenItem, fontSize: 13 }}>
+                          <span>{prod.emoji} {prod.nombre} × {parseFloat(prod.cantidad).toFixed(1)} {prod.unidad}</span>
+                          <span>{prod.precio > 0 ? `${((prod.precio || 0) * parseFloat(prod.cantidad)).toFixed(2)} €` : ""}</span>
+                        </div>
+                      ))}
+                      {p.otros && <div style={{ marginTop: 8, padding: "6px 10px", background: "#fff8e1", borderRadius: 6, fontSize: 12, color: "#5d4037" }}>📝 {p.otros}</div>}
+                      {totalPed > 0 && (
+                        <div style={{ ...s.totalBox, marginTop: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 500 }}>Total estimado</span>
+                          <span style={{ fontSize: 15, fontWeight: 600, color: "#2d6a4f" }}>{totalPed.toFixed(2)} €</span>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                        {[["pendiente","⏳","#e65100"],["confirmado","✅","#2e7d32"],["gestionado","📦","#1565c0"]].map(([e, icon, color]) => (
+                          <button key={e} onClick={() => cambiarEstado(p.id, e as string)}
+                            style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.estado === e ? color : "var(--color-background-secondary)", color: p.estado === e ? "#fff" : "inherit", fontWeight: p.estado === e ? 500 : 400 }}>
+                            {icon} {(e as string).charAt(0).toUpperCase() + (e as string).slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
           )}
 
           {panelTab === "productos" && (
@@ -386,6 +416,10 @@ export default function ReservasApp() {
                       {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
                     </select>
                   </div>
+                  <div>
+                    <label style={s.label}>Precio (€ por unidad)</label>
+                    <input type="number" min="0" step="0.01" style={s.input} placeholder="0.00" value={formProd.precio || ""} onChange={e => setFormProd(f => ({ ...f, precio: parseFloat(e.target.value) || 0 }))} />
+                  </div>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label style={s.label}>Categoría</label>
                     <div style={{ display: "flex", gap: 8 }}>
@@ -406,7 +440,7 @@ export default function ReservasApp() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" as const, alignItems: "center" }}>
                 <input style={{ ...s.input, maxWidth: 200 }} placeholder="🔍 Buscar..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
                 <div style={{ display: "flex", gap: 4 }}>
                   {["todos","fruta","verdura"].map(c => (
@@ -423,7 +457,7 @@ export default function ReservasApp() {
                 : productosFiltrados.map(p => (
                   <div key={p.id} style={{ ...s.card, padding: "0.75rem 1rem", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
                     {confirmEliminar === p.id ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", flexWrap: "wrap" as const }}>
                         <span style={{ fontSize: 13, flex: 1 }}>¿Eliminar <strong>{p.nombre}</strong>?</span>
                         <button style={{ ...s.btnPrimary("#e24b4a"), padding: "6px 12px", fontSize: 12 }} onClick={() => eliminarProducto(p.id)}>Sí, eliminar</button>
                         <button style={{ ...s.btnSecondary, padding: "6px 12px", fontSize: 12 }} onClick={() => setConfirmEliminar(null)}>Cancelar</button>
@@ -433,7 +467,10 @@ export default function ReservasApp() {
                         <span style={{ fontSize: 24 }}>{p.emoji}</span>
                         <div style={{ flex: 1 }}>
                           <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{p.nombre}</p>
-                          <p style={{ margin: 0, fontSize: 12, color: "#888" }}>por {p.unidad} · {p.categoria}</p>
+                          <p style={{ margin: 0, fontSize: 12, color: "#888" }}>
+                            por {p.unidad} · {p.categoria}
+                            {p.precio ? ` · ${p.precio.toFixed(2)} €/${p.unidad}` : " · sin precio"}
+                          </p>
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
                           <button style={{ ...s.btnSecondary, padding: "5px 10px", fontSize: 12 }} onClick={() => iniciarEdicion(p)}>✏️ Editar</button>
@@ -461,13 +498,15 @@ export default function ReservasApp() {
       <div key={p.id} style={{ border: qty > 0 ? "1.5px solid #2d6a4f" : "0.5px solid var(--color-border-tertiary)", borderRadius: 10, padding: "0.75rem", textAlign: "center", background: qty > 0 ? "#f0faf4" : "var(--color-background-primary)" }}>
         <span style={{ fontSize: 26, display: "block", marginBottom: 4 }}>{p.emoji}</span>
         <p style={{ fontSize: 12, fontWeight: 500, margin: "0 0 2px" }}>{p.nombre}</p>
-        <p style={{ fontSize: 11, color: "#888", margin: "0 0 8px" }}>por {p.unidad}</p>
+        <p style={{ fontSize: 11, color: "#888", margin: "0 0 2px" }}>por {p.unidad}</p>
+        {p.precio ? <p style={{ fontSize: 12, color: "#2d6a4f", fontWeight: 500, margin: "0 0 8px" }}>{p.precio.toFixed(2)} €/{p.unidad}</p> : <p style={{ fontSize: 11, color: "#ccc", margin: "0 0 8px" }}>precio a consultar</p>}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <button style={{ width: 24, height: 24, borderRadius: 12, border: "0.5px solid var(--color-border-tertiary)", background: "transparent", cursor: "pointer", fontSize: 15, color: "inherit" }} onClick={() => setCantidad(p.id, qty - (entera ? 1 : 0.1))}>−</button>
           <input type="number" min="0" step={entera ? 1 : 0.1} value={qty || ""} placeholder="0" onChange={e => setCantidad(p.id, e.target.value)}
             style={{ width: 40, textAlign: "center", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 6, padding: "2px", fontSize: 13, background: "transparent", color: "inherit" }} />
           <button style={{ width: 24, height: 24, borderRadius: 12, border: "0.5px solid var(--color-border-tertiary)", background: "transparent", cursor: "pointer", fontSize: 15, color: "inherit" }} onClick={() => setCantidad(p.id, qty + (entera ? 1 : 0.1))}>+</button>
         </div>
+        {qty > 0 && p.precio ? <p style={{ fontSize: 12, color: "#2d6a4f", fontWeight: 500, marginTop: 6, marginBottom: 0 }}>{(p.precio * qty).toFixed(2)} €</p> : null}
       </div>
     );
   });
@@ -507,7 +546,18 @@ export default function ReservasApp() {
       {productosSeleccionados.length > 0 && (
         <div style={s.seccion}>
           <h3 style={{ fontSize: 15, fontWeight: 500, marginBottom: 10 }}>Tu selección</h3>
-          {productosSeleccionados.map(p => (<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre}</span><span style={{ fontWeight: 500 }}>{cantidades[p.id]} {p.unidad}</span></div>))}
+          {productosSeleccionados.map(p => (
+            <div key={p.id} style={s.resumenItem}>
+              <span>{p.emoji} {p.nombre} × {cantidades[p.id]} {p.unidad}</span>
+              <span style={{ fontWeight: 500 }}>{p.precio ? `${(p.precio * cantidades[p.id]).toFixed(2)} €` : "-"}</span>
+            </div>
+          ))}
+          {totalPedido > 0 && (
+            <div style={s.totalBox}>
+              <span style={{ fontWeight: 500 }}>Total estimado</span>
+              <span style={{ fontSize: 18, fontWeight: 600, color: "#2d6a4f" }}>{totalPedido.toFixed(2)} €</span>
+            </div>
+          )}
         </div>
       )}
 
