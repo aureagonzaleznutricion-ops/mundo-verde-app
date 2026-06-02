@@ -170,7 +170,11 @@ export default function ReservasApp() {
     await supabase.from("pedidos").update({ estado }).eq("id", id);
     setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado } : p));
   };
-
+const eliminarPedido = async (id: number) => {
+  await supabase.from("pedido_productos").delete().eq("pedido_id", id);
+  await supabase.from("pedidos").delete().eq("id", id);
+  setPedidos(prev => prev.filter(p => p.id !== id));
+};
   const pedidosFiltrados = useMemo(() => pedidos.filter(p => {
     if (filtroEstado !== "todos" && p.estado !== filtroEstado) return false;
     if (filtroFecha && p.fecha !== new Date(filtroFecha).toLocaleDateString("es-ES")) return false;
@@ -387,14 +391,18 @@ export default function ReservasApp() {
                           <span style={{ fontSize: 15, fontWeight: 600, color: "#2d6a4f" }}>{totalPed.toFixed(2)} €</span>
                         </div>
                       )}
-                      <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-                        {[["pendiente","⏳","#e65100"],["confirmado","✅","#2e7d32"],["gestionado","📦","#1565c0"]].map(([e, icon, color]) => (
-                          <button key={e} onClick={() => cambiarEstado(p.id, e as string)}
-                            style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.estado === e ? color : "var(--color-background-secondary)", color: p.estado === e ? "#fff" : "inherit", fontWeight: p.estado === e ? 500 : 400 }}>
-                            {icon} {(e as string).charAt(0).toUpperCase() + (e as string).slice(1)}
-                          </button>
-                        ))}
-                      </div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" as const }}>
+  {[["pendiente","⏳","#e65100"],["confirmado","✅","#2e7d32"],["gestionado","📦","#1565c0"]].map(([e, icon, color]) => (
+    <button key={e} onClick={() => cambiarEstado(p.id, e as string)}
+      style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.estado === e ? color : "var(--color-background-secondary)", color: p.estado === e ? "#fff" : "inherit", fontWeight: p.estado === e ? 500 : 400 }}>
+      {icon} {(e as string).charAt(0).toUpperCase() + (e as string).slice(1)}
+    </button>
+  ))}
+  <button onClick={() => eliminarPedido(p.id)}
+    style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "0.5px solid #e24b4a", cursor: "pointer", background: "transparent", color: "#e24b4a", marginLeft: "auto" }}>
+    🗑️ Eliminar
+  </button>
+</div>
                     </div>
                   );
                 })
