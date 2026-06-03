@@ -38,6 +38,7 @@ type Pedido = {
 };
 
 function exportarCSV(pedidos: Pedido[]) {
+  // Pedidos individuales
   const filas = [["ID","Fecha","Hora","Cliente","Teléfono","Email","Producto","Cantidad","Unidad","Precio/u","Subtotal","Otros","Estado"]];
   pedidos.forEach(p => {
     if (p.productos.length === 0 && p.otros) {
@@ -49,6 +50,21 @@ function exportarCSV(pedidos: Pedido[]) {
       });
     }
   });
+
+  // Totales por producto
+  const totales: Record<string, { cantidad: number; unidad: string; emoji: string }> = {};
+  pedidos.forEach(p => p.productos.forEach((prod: any) => {
+    if (!totales[prod.nombre]) totales[prod.nombre] = { cantidad: 0, unidad: prod.unidad, emoji: prod.emoji };
+    totales[prod.nombre].cantidad += parseFloat(prod.cantidad);
+  }));
+
+  filas.push([]);
+  filas.push(["TOTALES POR PRODUCTO"]);
+  filas.push(["Producto","Cantidad total","Unidad"]);
+  Object.entries(totales).sort((a,b) => b[1].cantidad - a[1].cantidad).forEach(([nombre, data]) => {
+    filas.push([nombre, String(parseFloat(data.cantidad.toFixed(1))), data.unidad]);
+  });
+
   const csv = filas.map(f => f.map(v => `"${v}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
