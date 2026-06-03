@@ -2,6 +2,14 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { supabase } from "../supabase";
+import emailjs from "@emailjs/browser";
+
+emailjs.init("z790C6rjbbv3l6XoD");
+
+const SERVICE_ID = "service_lobqqc4";
+const TEMPLATE_CLIENTE = "mundo verde_cliente";
+const TEMPLATE_TIENDA = "mundo verde tenda";
+const PUBLIC_KEY = "z790C6rjbbv3l6XoD";
 
 const UNIDADES = ["kg","unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"];
 const isEntera = (u: string) => ["unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"].includes(u);
@@ -82,8 +90,8 @@ export default function ReservasApp() {
 
   const cargarProductos = async () => {
     setCargando(true);
-    const { data, error } = await supabase.from("productos").select("*").order("categoria").order("nombre");
-    if (!error && data) setProductos(data);
+    const { data } = await supabase.from("productos").select("*").order("categoria").order("nombre");
+    if (data) setProductos(data);
     setCargando(false);
   };
 
@@ -108,9 +116,7 @@ export default function ReservasApp() {
 
   const productosSeleccionados = productos.filter(p => cantidades[p.id] > 0);
 
-  const totalPedido = productosSeleccionados.reduce((sum, p) => {
-    return sum + ((p.precio || 0) * cantidades[p.id]);
-  }, 0);
+  const totalPedido = productosSeleccionados.reduce((sum, p) => sum + ((p.precio || 0) * cantidades[p.id]), 0);
 
   const validar = () => {
     const e: Record<string, string> = {};
@@ -156,6 +162,30 @@ export default function ReservasApp() {
         otros: otrosProductos.trim(), estado: "pendiente",
       };
       setPedidos(prev => [nuevoPedido, ...prev]);
+
+      // Preparar y enviar emails
+      const resumenProductos = productosSeleccionados.map(p =>
+        `${p.emoji} ${p.nombre}: ${cantidades[p.id]} ${p.unidad}${p.precio ? ` (${(p.precio * cantidades[p.id]).toFixed(2)} €)` : ""}`
+      ).join("\n");
+
+      const templateParams = {
+        cliente_nombre: cliente.nombre,
+        cliente_email: cliente.email,
+        cliente_telefono: cliente.telefono,
+        productos: resumenProductos || "Sin productos del catálogo",
+        total: totalPedido > 0 ? `${totalPedido.toFixed(2)} €` : "A consultar",
+        nota: otrosProductos.trim() || "Sin notas",
+      };
+
+      try {
+        await emailjs.send(SERVICE_ID, TEMPLATE_CLIENTE, templateParams, PUBLIC_KEY);
+        console.log("Email cliente enviado");
+        await emailjs.send(SERVICE_ID, TEMPLATE_TIENDA, templateParams, PUBLIC_KEY);
+        console.log("Email tienda enviado");
+      } catch(e) {
+        console.error("EmailJS ERROR:", e);
+      }
+
       setVista("confirmacion");
     }
     setGuardando(false);
@@ -170,11 +200,13 @@ export default function ReservasApp() {
     await supabase.from("pedidos").update({ estado }).eq("id", id);
     setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado } : p));
   };
-const eliminarPedido = async (id: number) => {
-  await supabase.from("pedido_productos").delete().eq("pedido_id", id);
-  await supabase.from("pedidos").delete().eq("id", id);
-  setPedidos(prev => prev.filter(p => p.id !== id));
-};
+
+  const eliminarPedido = async (id: number) => {
+    await supabase.from("pedido_productos").delete().eq("pedido_id", id);
+    await supabase.from("pedidos").delete().eq("id", id);
+    setPedidos(prev => prev.filter(p => p.id !== id));
+  };
+
   const pedidosFiltrados = useMemo(() => pedidos.filter(p => {
     if (filtroEstado !== "todos" && p.estado !== filtroEstado) return false;
     if (filtroFecha && p.fecha !== new Date(filtroFecha).toLocaleDateString("es-ES")) return false;
@@ -219,14 +251,15 @@ const eliminarPedido = async (id: number) => {
 
   const cancelarEdicion = () => { setFormProd(FORM_VACIO); setEditandoId(null); };
 
-  const toggleActivo = async (id: number, activo: boolean) => {
-  await supabase.from("productos").update({ activo: !activo }).eq("id", id);
-  setProductos(prev => prev.map(p => p.id === id ? { ...p, activo: !activo } : p));
-};
   const eliminarProducto = async (id: number) => {
     await supabase.from("productos").update({ activo: false }).eq("id", id);
     setProductos(prev => prev.filter(p => p.id !== id));
     setConfirmEliminar(null);
+  };
+
+  const toggleActivo = async (id: number, activo: boolean) => {
+    await supabase.from("productos").update({ activo: !activo }).eq("id", id);
+    setProductos(prev => prev.map(p => p.id === id ? { ...p, activo: !activo } : p));
   };
 
   const productosFiltrados = productos.filter(p => {
@@ -274,7 +307,7 @@ const eliminarPedido = async (id: number) => {
         <div style={s.confirmBox}>
           <div style={{ fontSize: 48 }}>✅</div>
           <h2 style={{ color: "#2d6a4f", margin: "0.5rem 0" }}>¡Reserva enviada!</h2>
-          <p style={{ color: "#555", fontSize: 14, margin: "0.5rem 0 1.5rem" }}>Gracias, <strong>{ultimo.cliente.nombre}</strong>. Nos pondremos en contacto contigo para confirmar.</p>
+          <p style={{ color: "#555", fontSize: 14, margin: "0.5rem 0 1.5rem" }}>Gracias, <strong>{ultimo.cliente.nombre}</strong>. Te hemos enviado un email de confirmación.</p>
           <div style={{ textAlign: "left", marginBottom: "0.5rem" }}>
             {ultimo.productos.map(p => (
               <div key={p.id} style={s.resumenItem}>
@@ -392,17 +425,17 @@ const eliminarPedido = async (id: number) => {
                         </div>
                       )}
                       <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" as const }}>
-  {[["pendiente","⏳","#e65100"],["confirmado","✅","#2e7d32"],["gestionado","📦","#1565c0"]].map(([e, icon, color]) => (
-    <button key={e} onClick={() => cambiarEstado(p.id, e as string)}
-      style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.estado === e ? color : "var(--color-background-secondary)", color: p.estado === e ? "#fff" : "inherit", fontWeight: p.estado === e ? 500 : 400 }}>
-      {icon} {(e as string).charAt(0).toUpperCase() + (e as string).slice(1)}
-    </button>
-  ))}
-  <button onClick={() => eliminarPedido(p.id)}
-    style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "0.5px solid #e24b4a", cursor: "pointer", background: "transparent", color: "#e24b4a", marginLeft: "auto" }}>
-    🗑️ Eliminar
-  </button>
-</div>
+                        {[["pendiente","⏳","#e65100"],["confirmado","✅","#2e7d32"],["gestionado","📦","#1565c0"]].map(([e, icon, color]) => (
+                          <button key={e} onClick={() => cambiarEstado(p.id, e as string)}
+                            style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.estado === e ? color : "var(--color-background-secondary)", color: p.estado === e ? "#fff" : "inherit", fontWeight: p.estado === e ? 500 : 400 }}>
+                            {icon} {(e as string).charAt(0).toUpperCase() + (e as string).slice(1)}
+                          </button>
+                        ))}
+                        <button onClick={() => eliminarPedido(p.id)}
+                          style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "0.5px solid #e24b4a", cursor: "pointer", background: "transparent", color: "#e24b4a", marginLeft: "auto" }}>
+                          🗑️ Eliminar
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -486,14 +519,13 @@ const eliminarPedido = async (id: number) => {
                           </p>
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
-  <button
-    onClick={() => toggleActivo(p.id, p.activo)}
-    style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.activo ? "#e8f5e9" : "#fbe9e7", color: p.activo ? "#2e7d32" : "#c62828", fontWeight: 500 }}>
-    {p.activo ? "✅ Visible" : "🔴 Oculto"}
-  </button>
-  <button style={{ ...s.btnSecondary, padding: "5px 10px", fontSize: 12 }} onClick={() => iniciarEdicion(p)}>✏️ Editar</button>
-  <button style={{ ...s.btnDanger, padding: "5px 10px", fontSize: 12 }} onClick={() => setConfirmEliminar(p.id)}>🗑️</button>
-</div>
+                          <button onClick={() => toggleActivo(p.id, p.activo)}
+                            style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.activo ? "#e8f5e9" : "#fbe9e7", color: p.activo ? "#2e7d32" : "#c62828", fontWeight: 500 }}>
+                            {p.activo ? "✅ Visible" : "🔴 Oculto"}
+                          </button>
+                          <button style={{ ...s.btnSecondary, padding: "5px 10px", fontSize: 12 }} onClick={() => iniciarEdicion(p)}>✏️ Editar</button>
+                          <button style={{ ...s.btnDanger, padding: "5px 10px", fontSize: 12 }} onClick={() => setConfirmEliminar(p.id)}>🗑️</button>
+                        </div>
                       </>
                     )}
                   </div>
@@ -507,7 +539,7 @@ const eliminarPedido = async (id: number) => {
   }
 
   const frutas = productos.filter(p => p.categoria === "fruta" && p.activo);
-const verduras = productos.filter(p => p.categoria === "verdura" && p.activo);
+  const verduras = productos.filter(p => p.categoria === "verdura" && p.activo);
 
   const renderGrid = (lista: Producto[]) => lista.map(p => {
     const qty = cantidades[p.id] || 0;
