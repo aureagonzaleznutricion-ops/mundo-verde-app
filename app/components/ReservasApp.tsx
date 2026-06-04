@@ -7,8 +7,8 @@ import emailjs from "@emailjs/browser";
 emailjs.init("z790C6rjbbv3l6XoD");
 
 const SERVICE_ID = "service_lobqqc4";
-const TEMPLATE_CLIENTE = "mundo verde_cliente";
-const TEMPLATE_TIENDA = "mundo verde tenda";
+const TEMPLATE_CLIENTE = "mundo_verde_cliente";
+const TEMPLATE_TIENDA = "mundo_verde_tenda";
 const PUBLIC_KEY = "z790C6rjbbv3l6XoD";
 
 const UNIDADES = ["kg","unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"];
@@ -254,7 +254,10 @@ export default function ReservasApp() {
       setEditandoId(null);
     } else {
       const { data } = await supabase.from("productos").insert({ ...formProd, activo: true }).select().single();
-      if (data) setProductos(prev => [...prev, data]);
+      if (data) setProductos(prev => [...prev, data].sort((a, b) => {
+  if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria);
+  return a.nombre.localeCompare(b.nombre);
+}));
     }
     setFormProd(FORM_VACIO);
     setGuardando(false);
@@ -535,13 +538,48 @@ export default function ReservasApp() {
                           </p>
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button onClick={() => toggleActivo(p.id, p.activo)}
-                            style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.activo ? "#e8f5e9" : "#fbe9e7", color: p.activo ? "#2e7d32" : "#c62828", fontWeight: 500 }}>
-                            {p.activo ? "✅ Visible" : "🔴 Oculto"}
-                          </button>
-                          <button style={{ ...s.btnSecondary, padding: "5px 10px", fontSize: 12 }} onClick={() => iniciarEdicion(p)}>✏️ Editar</button>
-                          <button style={{ ...s.btnDanger, padding: "5px 10px", fontSize: 12 }} onClick={() => setConfirmEliminar(p.id)}>🗑️</button>
-                        </div>
+  <button onClick={() => toggleActivo(p.id, p.activo)}
+    style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.activo ? "#e8f5e9" : "#fbe9e7", color: p.activo ? "#2e7d32" : "#c62828", fontWeight: 500 }}>
+    {p.activo ? "✅ Visible" : "🔴 Oculto"}
+  </button>
+  <button style={{ ...s.btnSecondary, padding: "5px 10px", fontSize: 12 }} onClick={() => setEditandoId(editandoId === p.id ? null : p.id)}>✏️ Editar</button>
+  <button style={{ ...s.btnDanger, padding: "5px 10px", fontSize: 12 }} onClick={() => setConfirmEliminar(p.id)}>🗑️</button>
+</div>
+{editandoId === p.id && (
+  <div style={{ marginTop: 12, padding: "1rem", background: "var(--color-background-secondary)", borderRadius: 8, borderTop: "0.5px solid var(--color-border-tertiary)" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+      <div style={{ gridColumn: "1 / -1" }}>
+        <label style={s.label}>Nombre</label>
+        <input style={s.input} value={formProd.nombre} onChange={e => setFormProd(f => ({ ...f, nombre: e.target.value }))} />
+      </div>
+      <div>
+        <label style={s.label}>Emoji</label>
+        <input style={s.input} value={formProd.emoji} onChange={e => setFormProd(f => ({ ...f, emoji: e.target.value }))} />
+      </div>
+      <div>
+        <label style={s.label}>Precio (€)</label>
+        <input type="number" min="0" step="0.01" style={s.input} value={formProd.precio || ""} onChange={e => setFormProd(f => ({ ...f, precio: parseFloat(e.target.value) || 0 }))} />
+      </div>
+      <div>
+        <label style={s.label}>Unidad</label>
+        <select style={s.input} value={formProd.unidad} onChange={e => setFormProd(f => ({ ...f, unidad: e.target.value }))}>
+          {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
+      </div>
+      <div>
+        <label style={s.label}>Categoría</label>
+        <select style={s.input} value={formProd.categoria} onChange={e => setFormProd(f => ({ ...f, categoria: e.target.value }))}>
+          <option value="fruta">🍎 Fruta</option>
+          <option value="verdura">🥦 Verdura</option>
+        </select>
+      </div>
+    </div>
+    <div style={{ display: "flex", gap: 8 }}>
+      <button style={s.btnPrimary()} onClick={guardarProducto} disabled={guardando}>{guardando ? "Guardando..." : "Guardar"}</button>
+      <button style={s.btnSecondary} onClick={cancelarEdicion}>Cancelar</button>
+    </div>
+  </div>
+)}
                       </>
                     )}
                   </div>
