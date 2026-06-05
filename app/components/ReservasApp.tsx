@@ -250,7 +250,10 @@ export default function ReservasApp() {
     setGuardando(true);
     if (editandoId !== null) {
       await supabase.from("productos").update(formProd).eq("id", editandoId);
-      setProductos(prev => prev.map(p => p.id === editandoId ? { ...p, ...formProd } : p));
+      setProductos(prev => prev.map(p => p.id === editandoId ? { ...p, ...formProd } : p).sort((a, b) => {
+  if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria);
+  return a.nombre.localeCompare(b.nombre);
+}));
       setEditandoId(null);
     } else {
       const { data } = await supabase.from("productos").insert({ ...formProd, activo: true }).select().single();
@@ -542,7 +545,7 @@ export default function ReservasApp() {
     style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: p.activo ? "#e8f5e9" : "#fbe9e7", color: p.activo ? "#2e7d32" : "#c62828", fontWeight: 500 }}>
     {p.activo ? "✅ Visible" : "🔴 Oculto"}
   </button>
-  <button style={{ ...s.btnSecondary, padding: "5px 10px", fontSize: 12 }} onClick={() => setEditandoId(editandoId === p.id ? null : p.id)}>✏️ Editar</button>
+  <button style={{ ...s.btnSecondary, padding: "5px 10px", fontSize: 12 }} onClick={() => { if (editandoId === p.id) { setEditandoId(null); } else { iniciarEdicion(p); } }}>✏️ Editar</button>
   <button style={{ ...s.btnDanger, padding: "5px 10px", fontSize: 12 }} onClick={() => setConfirmEliminar(p.id)}>🗑️</button>
 </div>
 {editandoId === p.id && (
