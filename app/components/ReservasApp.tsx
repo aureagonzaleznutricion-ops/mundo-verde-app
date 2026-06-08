@@ -178,7 +178,7 @@ export default function ReservasApp() {
         id: pedidoData.id, fecha, hora,
         cliente: { ...cliente },
         productos: productosSeleccionados.map(p => ({ ...p, cantidad: cantidades[p.id] })),
-        otros: otrosProductos.trim(), estado: "pendiente",
+        otros: otrosProductos.trim(), observaciones: observaciones.trim(), estado: "pendiente",
       };
       setPedidos(prev => [nuevoPedido, ...prev]);
 
