@@ -33,7 +33,8 @@ type Pedido = {
   hora: string;
   cliente: { nombre: string; telefono: string; email: string };
   productos: ProductoConCantidad[];
-  otros: string;
+ otros: string;
+  observaciones: string;
   estado: string;
 };
 
@@ -82,6 +83,7 @@ export default function ReservasApp() {
   const [cliente, setCliente] = useState({ nombre: "", telefono: "", email: "" });
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [otrosProductos, setOtrosProductos] = useState("");
+  const [observaciones, setObservaciones] = useState("");
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [codigoPanel, setCodigoPanel] = useState("");
   const [panelDesbloqueado, setPanelDesbloqueado] = useState(false);
@@ -119,7 +121,7 @@ export default function ReservasApp() {
       return {
         id: p.id, fecha: p.fecha, hora: p.hora,
         cliente: { nombre: p.cliente_nombre, telefono: p.cliente_telefono, email: p.cliente_email },
-        productos: prods || [], otros: p.otros || "", estado: p.estado,
+        productos: prods || [], otros: p.otros || "", observaciones: p.observaciones || "", estado: p.estado,
       };
     }));
     setPedidos(pedidosConProductos);
@@ -155,7 +157,8 @@ export default function ReservasApp() {
       cliente_nombre: cliente.nombre,
       cliente_telefono: cliente.telefono,
       cliente_email: cliente.email,
-      otros: otrosProductos.trim(),
+     otros: otrosProductos.trim(),
+      observaciones: observaciones.trim(),
       estado: "pendiente",
     }).select().single();
 
@@ -190,7 +193,8 @@ export default function ReservasApp() {
         cliente_telefono: cliente.telefono,
         productos: resumenProductos || "Sin productos del catálogo",
         total: totalPedido > 0 ? `${totalPedido.toFixed(2)} €` : "A consultar",
-        nota: otrosProductos.trim() || "Sin notas",
+      nota: otrosProductos.trim() || "Sin notas",
+observaciones: observaciones.trim() || "Sin observaciones",
       };
 
       try {
@@ -207,9 +211,9 @@ export default function ReservasApp() {
     setGuardando(false);
   };
 
-  const nuevaReserva = () => {
+ const nuevaReserva = () => {
     setCantidades({}); setCliente({ nombre: "", telefono: "", email: "" });
-    setOtrosProductos(""); setErrores({}); setVista("cliente");
+    setOtrosProductos(""); setObservaciones(""); setErrores({}); setVista("cliente");
   };
 
   const cambiarEstado = async (id: number, estado: string) => {
@@ -440,6 +444,7 @@ export default function ReservasApp() {
                         </div>
                       ))}
                       {p.otros && <div style={{ marginTop: 8, padding: "6px 10px", background: "#fff8e1", borderRadius: 6, fontSize: 12, color: "#5d4037" }}>📝 {p.otros}</div>}
+{p.observaciones && <div style={{ marginTop: 4, padding: "6px 10px", background: "#e3f2fd", borderRadius: 6, fontSize: 12, color: "#1565c0" }}>💬 {p.observaciones}</div>}
                       {totalPed > 0 && (
                         <div style={{ ...s.totalBox, marginTop: 8 }}>
                           <span style={{ fontSize: 13, fontWeight: 500 }}>Total estimado</span>
@@ -649,6 +654,11 @@ export default function ReservasApp() {
         <p style={{ fontSize: 13, color: "#666", marginBottom: 10 }}>¿Buscas algo que no está en la lista? Descríbelo aquí.</p>
         <textarea placeholder="Ej: Aguacates (2 unidades), Remolacha (1 kg)..." value={otrosProductos} onChange={e => setOtrosProductos(e.target.value)} rows={3} style={s.textarea} />
       </div>
+      <div style={{ ...s.seccion, marginTop: "1rem" }}>
+  <h3 style={{ fontSize: 15, fontWeight: 500, marginBottom: 6 }}>💬 Observaciones</h3>
+  <p style={{ fontSize: 13, color: "#666", marginBottom: 10 }}>¿Tienes algún comentario o indicación para tu pedido?</p>
+  <textarea placeholder="Ej: Por favor, que las manzanas sean pequeñas. Prefiero verduras de temporada..." value={observaciones} onChange={e => setObservaciones(e.target.value)} rows={3} style={s.textarea} />
+</div>
 
       {productosSeleccionados.length > 0 && (
         <div style={s.seccion}>
