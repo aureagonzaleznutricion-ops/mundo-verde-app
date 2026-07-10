@@ -7,7 +7,6 @@ import emailjs from "@emailjs/browser";
 emailjs.init("z790C6rjbbv3l6XoD");
 
 const SERVICE_ID = "service_lobqqc4";
-const TEMPLATE_CLIENTE = "mundo_verde_cliente";
 const TEMPLATE_TIENDA = "mundo_verde_tenda";
 const PUBLIC_KEY = "z790C6rjbbv3l6XoD";
 
@@ -190,12 +189,37 @@ export default function ReservasApp() {
       if (lineas.length>0) await supabase.from("pedido_productos").insert(lineas);
       const nuevoPedido: Pedido = { id:pedidoData.id, fecha, hora, cliente:{...cliente}, productos:productosSeleccionados.map(p=>({...p,cantidad:cantidades[p.id]})), otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida, estado:"pendiente" };
       setPedidos(prev => [nuevoPedido,...prev]);
+
+      // Parámetros para el email de la tienda
       const resumenProductos = productosSeleccionados.map(p => `${p.emoji} ${p.nombre}: ${cantidades[p.id]} ${p.unidad}${p.precio?` (${(p.precio*cantidades[p.id]).toFixed(2)} €)`:""}`).join("\n");
       const templateParams = { cliente_nombre:cliente.nombre, cliente_email:cliente.email, cliente_telefono:cliente.telefono, productos:resumenProductos||"Sin productos del catálogo", total:totalPedido>0?`${totalPedido.toFixed(2)} €`:"A consultar", nota:otrosProductos.trim()||"Sin notas", observaciones:observaciones.trim()||"Sin observaciones", dia_recogida:diaRecogida };
+
       try {
-        await emailjs.send(SERVICE_ID, TEMPLATE_CLIENTE, templateParams, PUBLIC_KEY);
+        // ✅ WhatsApp de confirmación al cliente (vía Twilio)
+        await fetch("/api/whatsapp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            telefono: cliente.telefono,
+            nombre: cliente.nombre,
+            productos: productosSeleccionados.map((p) => ({
+              emoji: p.emoji,
+              nombre: p.nombre,
+              cantidad: cantidades[p.id],
+              unidad: p.unidad,
+              precio: p.precio || 0,
+            })),
+            total: totalPedido,
+            dia_recogida: diaRecogida,
+            otros: otrosProductos.trim(),
+            observaciones: observaciones.trim(),
+          }),
+        });
+
+        // ✅ Email de aviso a la tienda (se mantiene igual)
         await emailjs.send(SERVICE_ID, TEMPLATE_TIENDA, templateParams, PUBLIC_KEY);
-      } catch(e) { console.error("EmailJS ERROR:", e); }
+      } catch(e) { console.error("Error notificación:", e); }
+
       setVista("confirmacion");
     }
     setGuardando(false);
@@ -304,7 +328,7 @@ export default function ReservasApp() {
         <div style={s.confirmBox}>
           <div style={{fontSize:48}}>✅</div>
           <h2 style={{color:"#2d6a4f",margin:"0.5rem 0"}}>¡Reserva enviada!</h2>
-          <p style={{color:"#555",fontSize:14,margin:"0.5rem 0 0.5rem"}}>Gracias, <strong>{ultimo.cliente.nombre}</strong>. Te hemos enviado un email de confirmación.</p>
+          <p style={{color:"#555",fontSize:14,margin:"0.5rem 0 0.5rem"}}>Gracias, <strong>{ultimo.cliente.nombre}</strong>. Te hemos enviado la confirmación por WhatsApp 💬</p>
           {ultimo.dia_recogida && <p style={{fontSize:14,fontWeight:600,color:"#2d6a4f",margin:"0 0 1rem"}}>📅 Recogida el {ultimo.dia_recogida}</p>}
           <div style={{textAlign:"left",marginBottom:"0.5rem"}}>
             {ultimo.productos.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span><span style={{fontWeight:500}}>{((p.precio||0)*p.cantidad).toFixed(2)} €</span></div>))}
