@@ -23,14 +23,14 @@ export async function POST(req: NextRequest) {
     .map(
       (p) =>
         `${p.emoji} ${p.nombre}: ${p.cantidad} ${p.unidad}${
-          p.precio ? ` — ${(p.precio * p.cantidad).toFixed(2)} €` : ""
+          p.precio ? ` - ${(p.precio * p.cantidad).toFixed(2)} EUR` : ""
         }`
     )
-    .join("\n");
+    .join(", ");
 
   let detalle = lineasProductos || "";
-  if (otros) detalle += (detalle ? "\n" : "") + `📝 Otros: ${otros}`;
-  if (observaciones) detalle += (detalle ? "\n" : "") + `💬 Observaciones: ${observaciones}`;
+  if (otros) detalle += (detalle ? " | " : "") + `Otros: ${otros}`;
+  if (observaciones) detalle += (detalle ? " | " : "") + `Obs: ${observaciones}`;
   if (!detalle) detalle = "Sin productos especificados";
 
   const totalStr = total > 0 ? (total as number).toFixed(2) : "Por confirmar";
