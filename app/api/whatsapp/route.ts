@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     await client.messages.create({
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
       to: `whatsapp:${numero}`,
-      contentSid: "HXe22e581a07fe6c58690cb93eb9a1a026",
+      contentSid: "HXa8c6c7e22f3080edcdc721d11f01f685",
       contentVariables: JSON.stringify({
         "1": nombre,
         "2": detalle,
