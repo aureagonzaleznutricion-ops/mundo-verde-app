@@ -70,7 +70,9 @@ export default function ReservasApp() {
   const [observaciones, setObservaciones] = useState("");
   const [diaRecogida, setDiaRecogida] = useState("");
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [codigoPanel, setCodigoPanel] = useState("");
+  const [emailPanel, setEmailPanel] = useState("");
+  const [passPanel, setPassPanel] = useState("");
+  const [entrandoPanel, setEntrandoPanel] = useState(false);
   const [panelDesbloqueado, setPanelDesbloqueado] = useState(false);
   const [errorPanel, setErrorPanel] = useState("");
   const [panelTab, setPanelTab] = useState("resumen");
@@ -106,8 +108,14 @@ export default function ReservasApp() {
   };
 
   useEffect(() => {
-    cargarProductos(); cargarPedidos(); cargarConfiguracion();
+    cargarProductos(); cargarConfiguracion();
+    supabase.auth.getSession().then(({ data }) => { if (data.session) setPanelDesbloqueado(true); });
   }, []);
+
+  useEffect(() => {
+    if (panelDesbloqueado) cargarPedidos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelDesbloqueado]);
 
   const cargarConfiguracion = async () => {
     const { data } = await supabase.from("configuracion").select("*");
@@ -173,13 +181,16 @@ export default function ReservasApp() {
     setGuardando(true);
     const fecha = hoy.toLocaleDateString("es-ES");
     const hora = hoy.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
-    const { data: pedidoData, error } = await supabase.from("pedidos").insert({
-      fecha, hora, cliente_nombre:cliente.nombre, cliente_telefono:cliente.telefono, cliente_email:cliente.email,
-      otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida, estado:"pendiente",
-    }).select().single();
+    const lineas = productosSeleccionados.map(p => ({producto_id:p.id, nombre:p.nombre, emoji:p.emoji, unidad:p.unidad, cantidad:cantidades[p.id], precio:p.precio||0}));
+    const { data: pedidoData, error } = await supabase.rpc("crear_pedido", {
+      p_pedido: {
+        fecha, hora, cliente_nombre:cliente.nombre, cliente_telefono:cliente.telefono, cliente_email:cliente.email,
+        otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida,
+      },
+      p_lineas: lineas,
+    });
+    if (error) console.error("Error al guardar el pedido:", error);
     if (!error && pedidoData) {
-      const lineas = productosSeleccionados.map(p => ({pedido_id:pedidoData.id, producto_id:p.id, nombre:p.nombre, emoji:p.emoji, unidad:p.unidad, cantidad:cantidades[p.id], precio:p.precio||0}));
-      if (lineas.length>0) await supabase.from("pedido_productos").insert(lineas);
       const nuevoPedido: Pedido = { id:pedidoData.id, fecha, hora, cliente:{...cliente}, productos:productosSeleccionados.map(p=>({...p,cantidad:cantidades[p.id]})), otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida, estado:"pendiente" };
       setPedidos(prev => [nuevoPedido,...prev]);
 
@@ -214,6 +225,19 @@ export default function ReservasApp() {
 
   const nuevaReserva = () => {
     setCantidades({}); setCliente({nombre:"",telefono:"",email:""}); setOtrosProductos(""); setObservaciones(""); setDiaRecogida(""); setErrores({}); setVista("cliente");
+  };
+
+  const entrarPanel = async () => {
+    setEntrandoPanel(true); setErrorPanel("");
+    const { error } = await supabase.auth.signInWithPassword({ email: emailPanel.trim(), password: passPanel });
+    setEntrandoPanel(false);
+    if (error) { setErrorPanel("Email o contraseña incorrectos"); return; }
+    setPassPanel(""); setPanelDesbloqueado(true);
+  };
+
+  const salirPanel = async () => {
+    await supabase.auth.signOut();
+    setPanelDesbloqueado(false); setPedidos([]); setVista("cliente");
   };
 
   const cambiarEstado = async (id: number, estado: string) => {
@@ -336,10 +360,11 @@ export default function ReservasApp() {
           <div style={s.header}><h1 style={s.titulo}>🌿 Panel de la tienda</h1><p style={s.subtitulo}>Acceso exclusivo</p></div>
           <div style={{...s.card,margin:"1rem",textAlign:"center"}}>
             <div style={{fontSize:36,marginBottom:12}}>🔒</div>
-            <p style={{color:"#555",marginBottom:16,fontSize:14}}>Introduce el código de acceso</p>
-            <input type="password" placeholder="Código..." value={codigoPanel} onChange={e=>setCodigoPanel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(codigoPanel==="eco2024"?(setPanelDesbloqueado(true),setErrorPanel("")):(setErrorPanel("Código incorrecto")))} style={{...s.input,maxWidth:200,margin:"0 auto 10px",display:"block",textAlign:"center"}} />
+            <p style={{color:"#555",marginBottom:16,fontSize:14}}>Entra con el email y la contraseña de la tienda</p>
+            <input type="email" autoComplete="username" placeholder="Email" value={emailPanel} onChange={e=>setEmailPanel(e.target.value)} style={{...s.input,maxWidth:260,margin:"0 auto 10px",display:"block",textAlign:"center"}} />
+            <input type="password" autoComplete="current-password" placeholder="Contraseña" value={passPanel} onChange={e=>setPassPanel(e.target.value)} onKeyDown={e=>e.key==="Enter"&&entrarPanel()} style={{...s.input,maxWidth:260,margin:"0 auto 10px",display:"block",textAlign:"center"}} />
             {errorPanel && <p style={s.error}>{errorPanel}</p>}
-            <button style={{...s.btnPrimary(),marginTop:8}} onClick={()=>codigoPanel==="eco2024"?(setPanelDesbloqueado(true),setErrorPanel("")):(setErrorPanel("Código incorrecto"))}>Entrar</button>
+            <button style={{...s.btnPrimary(),marginTop:8}} disabled={entrandoPanel} onClick={entrarPanel}>{entrandoPanel?"Entrando...":"Entrar"}</button>
             <br /><br />
             <button style={{...s.btnSecondary,fontSize:13}} onClick={()=>setVista("cliente")}>← Volver a reservas</button>
           </div>
@@ -355,6 +380,7 @@ export default function ReservasApp() {
             <div style={{display:"flex",gap:6}}>
               <button style={s.badge} onClick={()=>exportarCSV(pedidosFiltrados)}>⬇ CSV</button>
               <button style={s.badge} onClick={()=>setVista("cliente")}>← Tienda</button>
+              <button style={s.badge} onClick={salirPanel}>Salir</button>
             </div>
           </div>
         </div>
