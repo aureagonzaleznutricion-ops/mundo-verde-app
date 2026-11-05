@@ -2,13 +2,6 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { supabase } from "../supabase";
-import emailjs from "@emailjs/browser";
-
-emailjs.init("z790C6rjbbv3l6XoD");
-
-const SERVICE_ID = "service_lobqqc4";
-const TEMPLATE_TIENDA = "mundo_verde_tenda";
-const PUBLIC_KEY = "z790C6rjbbv3l6XoD";
 
 const UNIDADES = ["kg","unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"];
 const isEntera = (u: string) => ["unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"].includes(u);
@@ -190,9 +183,6 @@ export default function ReservasApp() {
       const nuevoPedido: Pedido = { id:pedidoData.id, fecha, hora, cliente:{...cliente}, productos:productosSeleccionados.map(p=>({...p,cantidad:cantidades[p.id]})), otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida, estado:"pendiente" };
       setPedidos(prev => [nuevoPedido,...prev]);
 
-      // Parámetros para el email de la tienda
-      const resumenProductos = productosSeleccionados.map(p => `${p.emoji} ${p.nombre}: ${cantidades[p.id]} ${p.unidad}${p.precio?` (${(p.precio*cantidades[p.id]).toFixed(2)} €)`:""}`).join("\n");
-      const templateParams = { cliente_nombre:cliente.nombre, cliente_email:cliente.email, cliente_telefono:cliente.telefono, productos:resumenProductos||"Sin productos del catálogo", total:totalPedido>0?`${totalPedido.toFixed(2)} €`:"A consultar", nota:otrosProductos.trim()||"Sin notas", observaciones:observaciones.trim()||"Sin observaciones", dia_recogida:diaRecogida };
 
       try {
         // ✅ WhatsApp de confirmación al cliente (vía Twilio)
@@ -215,9 +205,6 @@ export default function ReservasApp() {
             observaciones: observaciones.trim(),
           }),
         });
-
-        // ✅ Email de aviso a la tienda (se mantiene igual)
-        await emailjs.send(SERVICE_ID, TEMPLATE_TIENDA, templateParams, PUBLIC_KEY);
       } catch(e) { console.error("Error notificación:", e); }
 
       setVista("confirmacion");
