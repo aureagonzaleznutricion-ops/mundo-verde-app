@@ -90,6 +90,9 @@ export default function ReservasApp() {
   const [nuevoCierre, setNuevoCierre] = useState("");
   const [guardandoConfig, setGuardandoConfig] = useState(false);
   const [reservasAbiertas, setReservasAbiertas] = useState(true);
+  // Stock de ClassicGes (solo panel de la tienda; los clientes no pueden leerlo)
+  const [stockCG, setStockCG] = useState<Record<number, number | null>>({});
+  const [sincCG, setSincCG] = useState<string>("");
 
   const hoy = new Date();
 
@@ -111,6 +114,10 @@ export default function ReservasApp() {
     cargarProductos(); cargarConfiguracion();
     supabase.auth.getSession().then(({ data }) => { if (data.session) setPanelDesbloqueado(true); });
   }, []);
+
+  useEffect(() => {
+    if (panelDesbloqueado && panelTab === "productos") cargarStockCG();
+  }, [panelDesbloqueado, panelTab]);
 
   useEffect(() => {
     if (panelDesbloqueado) cargarPedidos();
@@ -145,6 +152,16 @@ export default function ReservasApp() {
     const { data } = await supabase.from("productos").select("*").order("categoria").order("nombre");
     if (data) setProductos(data);
     setCargando(false);
+  };
+
+  const cargarStockCG = async () => {
+    const { data } = await supabase.from("cg_stock_productos").select("producto_id,stock,ultima_sincronizacion");
+    if (!data) return;
+    const m: Record<number, number | null> = {};
+    let sinc = "";
+    data.forEach((r: any) => { m[r.producto_id] = r.stock === null ? null : Number(r.stock); if (r.ultima_sincronizacion) sinc = r.ultima_sincronizacion; });
+    setStockCG(m);
+    setSincCG(sinc ? new Date(sinc).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "");
   };
 
   const cargarPedidos = async () => {
@@ -474,7 +491,7 @@ export default function ReservasApp() {
               <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap" as const,alignItems:"center"}}>
                 <input style={{...s.input,maxWidth:200}} placeholder="🔍 Buscar..." value={busqueda} onChange={e=>setBusqueda(e.target.value)} />
                 <div style={{display:"flex",gap:4}}>{["todos","fruta","verdura"].map(c=>(<button key={c} style={filtroCat===c?{...s.tab,...s.tabActivo}:s.tab} onClick={()=>setFiltroCat(c)}>{c==="todos"?"Todos":c==="fruta"?"🍎 Frutas":"🥦 Verduras"}</button>))}</div>
-                <span style={{fontSize:12,color:"#888",marginLeft:"auto"}}>{productosFiltrados.length} productos</span>
+                <span style={{fontSize:12,color:"#888",marginLeft:"auto"}}>{productosFiltrados.length} productos{sincCG?` · stock ClassicGes del ${sincCG}`:""}</span>
               </div>
               {productosFiltrados.length===0
                 ? <p style={{textAlign:"center",color:"#aaa",padding:"2rem 0"}}>No se encontraron productos</p>
@@ -492,6 +509,11 @@ export default function ReservasApp() {
                         <div style={{flex:1}}>
                           <p style={{margin:0,fontSize:14,fontWeight:500}}>{p.nombre}</p>
                           <p style={{margin:0,fontSize:12,color:"#888"}}>por {p.unidad} · {p.categoria}{p.precio?` · ${p.precio.toFixed(2)} €/${p.unidad}`:" · sin precio"}</p>
+                          {p.id in stockCG && (
+                            <p style={{margin:0,fontSize:12,fontWeight:500,color:(stockCG[p.id]??0)<=0?"#c62828":"#2d6a4f"}}>
+                              📦 Stock ClassicGes: {stockCG[p.id]===null?"sin dato":`${Number(stockCG[p.id]).toLocaleString("es-ES",{maximumFractionDigits:2})} ${p.unidad}`}
+                            </p>
+                          )}
                         </div>
                         <div style={{display:"flex",gap:6}}>
                           <button onClick={()=>toggleActivo(p.id,p.activo)} style={{fontSize:11,padding:"4px 10px",borderRadius:20,border:"none",cursor:"pointer",background:p.activo?"#e8f5e9":"#fbe9e7",color:p.activo?"#2e7d32":"#c62828",fontWeight:500}}>{p.activo?"✅ Visible":"🔴 Oculto"}</button>
