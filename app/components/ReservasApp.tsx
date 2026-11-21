@@ -5,6 +5,9 @@ import { supabase } from "../supabase";
 
 const UNIDADES = ["kg","unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"];
 const isEntera = (u: string) => ["unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"].includes(u);
+// Productos por kg que el cliente pide por piezas: se guardan con esta unidad y precio 0 (se pesan en tienda)
+const UDS = "uds";
+const fmtCant = (c: any, u: string) => u==="kg" ? String(parseFloat(parseFloat(c).toFixed(1))) : String(parseFloat(c));
 const DIAS_SEMANA = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
 const DIAS_LABELS: Record<string,string> = { lunes:"Lunes", martes:"Martes", miercoles:"Miércoles", jueves:"Jueves", viernes:"Viernes", sabado:"Sábado", domingo:"Domingo" };
 
@@ -37,12 +40,13 @@ function exportarCSV(pedidos: Pedido[]) {
   });
   const totales: Record<string,{cantidad:number;unidad:string;emoji:string}> = {};
   pedidos.forEach(p => p.productos.forEach((prod:any) => {
-    if (!totales[prod.nombre]) totales[prod.nombre] = {cantidad:0,unidad:prod.unidad,emoji:prod.emoji};
-    totales[prod.nombre].cantidad += parseFloat(prod.cantidad);
+    const k = `${prod.nombre}|${prod.unidad}`;
+    if (!totales[k]) totales[k] = {cantidad:0,unidad:prod.unidad,emoji:prod.emoji};
+    totales[k].cantidad += parseFloat(prod.cantidad);
   }));
   filas.push([]); filas.push(["TOTALES POR PRODUCTO"]); filas.push(["Producto","Cantidad total","Unidad"]);
-  Object.entries(totales).sort((a,b)=>b[1].cantidad-a[1].cantidad).forEach(([nombre,data]) => {
-    filas.push([nombre, String(parseFloat(data.cantidad.toFixed(1))), data.unidad]);
+  Object.entries(totales).sort((a,b)=>b[1].cantidad-a[1].cantidad).forEach(([k,data]) => {
+    filas.push([k.split("|")[0], fmtCant(data.cantidad,data.unidad), data.unidad]);
   });
   const csv = filas.map(f=>f.map(v=>`"${v}"`).join(",")).join("\n");
   const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
@@ -64,6 +68,7 @@ export default function ReservasApp() {
   const [cargando, setCargando] = useState(true);
   const [vista, setVista] = useState("cliente");
   const [cantidades, setCantidades] = useState<Record<number,number>>({});
+  const [unidadesSel, setUnidadesSel] = useState<Record<number,number>>({});
   const [cliente, setCliente] = useState({nombre:"",telefono:"",email:""});
   const [errores, setErrores] = useState<Record<string,string>>({});
   const [otrosProductos, setOtrosProductos] = useState("");
@@ -177,10 +182,21 @@ export default function ReservasApp() {
   const setCantidad = (id: number, val: string|number) => {
     const n = Math.max(0, parseFloat(parseFloat(String(val||0)).toFixed(1)));
     setCantidades(prev => ({...prev,[id]:n}));
+    if (n>0) setUnidadesSel(prev => ({...prev,[id]:0}));
+  };
+  const setUnidades = (id: number, val: string|number) => {
+    const n = Math.max(0, Math.round(parseFloat(String(val||0)) || 0));
+    setUnidadesSel(prev => ({...prev,[id]:n}));
+    if (n>0) setCantidades(prev => ({...prev,[id]:0}));
   };
 
-  const productosSeleccionados = productos.filter(p => cantidades[p.id] > 0);
-  const totalPedido = productosSeleccionados.reduce((sum,p) => sum+((p.precio||0)*cantidades[p.id]), 0);
+  // Cada producto elegido, con su cantidad: en kg (con precio) o en unidades (sin precio, se pesa en tienda)
+  const productosSeleccionados: ProductoConCantidad[] = productos.flatMap(p =>
+    cantidades[p.id] > 0 ? [{...p, cantidad:cantidades[p.id]}]
+    : unidadesSel[p.id] > 0 ? [{...p, cantidad:unidadesSel[p.id], unidad:UDS, precio:0}]
+    : []);
+  const hayPorUnidades = productosSeleccionados.some(p => p.unidad===UDS);
+  const totalPedido = productosSeleccionados.reduce((sum,p) => sum+((p.precio||0)*p.cantidad), 0);
 
   const validar = () => {
     const e: Record<string,string> = {};
@@ -198,7 +214,7 @@ export default function ReservasApp() {
     setGuardando(true);
     const fecha = hoy.toLocaleDateString("es-ES");
     const hora = hoy.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
-    const lineas = productosSeleccionados.map(p => ({producto_id:p.id, nombre:p.nombre, emoji:p.emoji, unidad:p.unidad, cantidad:cantidades[p.id], precio:p.precio||0}));
+    const lineas = productosSeleccionados.map(p => ({producto_id:p.id, nombre:p.nombre, emoji:p.emoji, unidad:p.unidad, cantidad:p.cantidad, precio:p.precio||0}));
     const { data: pedidoData, error } = await supabase.rpc("crear_pedido", {
       p_pedido: {
         fecha, hora, cliente_nombre:cliente.nombre, cliente_telefono:cliente.telefono, cliente_email:cliente.email,
@@ -208,7 +224,7 @@ export default function ReservasApp() {
     });
     if (error) console.error("Error al guardar el pedido:", error);
     if (!error && pedidoData) {
-      const nuevoPedido: Pedido = { id:pedidoData.id, fecha, hora, cliente:{...cliente}, productos:productosSeleccionados.map(p=>({...p,cantidad:cantidades[p.id]})), otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida, estado:"pendiente" };
+      const nuevoPedido: Pedido = { id:pedidoData.id, fecha, hora, cliente:{...cliente}, productos:productosSeleccionados, otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida, estado:"pendiente" };
       setPedidos(prev => [nuevoPedido,...prev]);
 
 
@@ -223,7 +239,7 @@ export default function ReservasApp() {
             productos: productosSeleccionados.map((p) => ({
               emoji: p.emoji,
               nombre: p.nombre,
-              cantidad: cantidades[p.id],
+              cantidad: p.cantidad,
               unidad: p.unidad,
               precio: p.precio || 0,
             })),
@@ -241,7 +257,7 @@ export default function ReservasApp() {
   };
 
   const nuevaReserva = () => {
-    setCantidades({}); setCliente({nombre:"",telefono:"",email:""}); setOtrosProductos(""); setObservaciones(""); setDiaRecogida(""); setErrores({}); setVista("cliente");
+    setCantidades({}); setUnidadesSel({}); setCliente({nombre:"",telefono:"",email:""}); setOtrosProductos(""); setObservaciones(""); setDiaRecogida(""); setErrores({}); setVista("cliente");
   };
 
   const entrarPanel = async () => {
@@ -277,8 +293,9 @@ export default function ReservasApp() {
   const totalesPorProducto = useMemo(() => {
     const t: Record<string,{cantidad:number;unidad:string;emoji:string}> = {};
     pedidosFiltrados.forEach(p => p.productos.forEach((prod:any) => {
-      if (!t[prod.nombre]) t[prod.nombre] = {cantidad:0,unidad:prod.unidad,emoji:prod.emoji};
-      t[prod.nombre].cantidad += parseFloat(prod.cantidad);
+      const k = `${prod.nombre}|${prod.unidad}`;
+      if (!t[k]) t[k] = {cantidad:0,unidad:prod.unidad,emoji:prod.emoji};
+      t[k].cantidad += parseFloat(prod.cantidad);
     }));
     return t;
   }, [pedidosFiltrados]);
@@ -359,11 +376,12 @@ export default function ReservasApp() {
           <p style={{color:"#555",fontSize:14,margin:"0.5rem 0 0.5rem"}}>Gracias, <strong>{ultimo.cliente.nombre}</strong>. Te hemos enviado la confirmación por WhatsApp 💬</p>
           {ultimo.dia_recogida && <p style={{fontSize:14,fontWeight:600,color:"#2d6a4f",margin:"0 0 1rem"}}>📅 Recogida el {ultimo.dia_recogida}</p>}
           <div style={{textAlign:"left",marginBottom:"0.5rem"}}>
-            {ultimo.productos.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span><span style={{fontWeight:500}}>{((p.precio||0)*p.cantidad).toFixed(2)} €</span></div>))}
+            {ultimo.productos.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span><span style={{fontWeight:500}}>{p.unidad===UDS?"se pesa en tienda":`${((p.precio||0)*p.cantidad).toFixed(2)} €`}</span></div>))}
             {ultimo.otros && <p style={{fontSize:13,color:"#666",marginTop:8}}>📝 {ultimo.otros}</p>}
             {ultimo.observaciones && <p style={{fontSize:13,color:"#555",marginTop:4}}>💬 {ultimo.observaciones}</p>}
           </div>
           {totalConfirmacion>0 && (<div style={s.totalBox}><span style={{fontWeight:500}}>Total estimado</span><span style={{fontSize:18,fontWeight:600,color:"#2d6a4f"}}>{totalConfirmacion.toFixed(2)} €</span></div>)}
+          {ultimo.productos.some(p=>p.unidad===UDS) && <p style={{fontSize:12,color:"#888",margin:"6px 0 0"}}>Los productos pedidos por unidades no están incluidos en el total: se pesan en tienda.</p>}
           <button style={{...s.btnSecondary,marginTop:"1rem"}} onClick={nuevaReserva}>Nueva reserva</button>
         </div>
       </div>
@@ -433,8 +451,8 @@ export default function ReservasApp() {
             Object.keys(totalesPorProducto).length===0
               ? <p style={{color:"#aaa",textAlign:"center",padding:"2rem 0"}}>No hay datos</p>
               : <div style={{background:"#f0faf4",border:"1px solid #2d6a4f",borderRadius:10,padding:"1rem"}}>
-                  {Object.entries(totalesPorProducto).sort((a,b)=>b[1].cantidad-a[1].cantidad).map(([nombre,data])=>(
-                    <div key={nombre} style={s.resumenItem}><span>{data.emoji} {nombre}</span><span style={{fontWeight:500,color:"#2d6a4f"}}>{parseFloat(data.cantidad.toFixed(1))} {data.unidad}</span></div>
+                  {Object.entries(totalesPorProducto).sort((a,b)=>b[1].cantidad-a[1].cantidad).map(([k,data])=>(
+                    <div key={k} style={s.resumenItem}><span>{data.emoji} {k.split("|")[0]}</span><span style={{fontWeight:500,color:"#2d6a4f"}}>{fmtCant(data.cantidad,data.unidad)} {data.unidad}</span></div>
                   ))}
                 </div>
           )}
@@ -455,7 +473,7 @@ export default function ReservasApp() {
                         <span style={{fontSize:12,color:"#888"}}>{p.fecha} {p.hora}</span>
                       </div>
                       <div style={{fontSize:12,color:"#666",marginBottom:8}}>📞 {p.cliente.telefono} · ✉️ {p.cliente.email}</div>
-                      {p.productos.map((prod:any)=>(<div key={prod.id} style={{...s.resumenItem,fontSize:13}}><span>{prod.emoji} {prod.nombre} × {parseFloat(prod.cantidad).toFixed(1)} {prod.unidad}</span><span>{prod.precio>0?`${((prod.precio||0)*parseFloat(prod.cantidad)).toFixed(2)} €`:""}</span></div>))}
+                      {p.productos.map((prod:any)=>(<div key={prod.id} style={{...s.resumenItem,fontSize:13}}><span>{prod.emoji} {prod.nombre} × {fmtCant(prod.cantidad,prod.unidad)} {prod.unidad}</span><span>{prod.precio>0?`${((prod.precio||0)*parseFloat(prod.cantidad)).toFixed(2)} €`:prod.unidad===UDS?"se pesa":""}</span></div>))}
                       {p.otros&&<div style={{marginTop:8,padding:"6px 10px",background:"#fff8e1",borderRadius:6,fontSize:12,color:"#5d4037"}}>📝 {p.otros}</div>}
                       {p.observaciones&&<div style={{marginTop:4,padding:"6px 10px",background:"#e3f2fd",borderRadius:6,fontSize:12,color:"#1565c0"}}>💬 {p.observaciones}</div>}
                       {totalPed>0&&(<div style={{...s.totalBox,marginTop:8}}><span style={{fontSize:13,fontWeight:500}}>Total estimado</span><span style={{fontSize:15,fontWeight:600,color:"#2d6a4f"}}>{totalPed.toFixed(2)} €</span></div>)}
@@ -605,19 +623,33 @@ export default function ReservasApp() {
 
   const renderGrid = (lista: Producto[]) => lista.map(p=>{
     const qty = cantidades[p.id]||0;
+    const uds = unidadesSel[p.id]||0;
     const entera = isEntera(p.unidad);
+    const elegido = qty>0 || uds>0;
+    const btnQ = {width:24,height:24,borderRadius:12,border:"0.5px solid var(--color-border-tertiary)",background:"transparent",cursor:"pointer",fontSize:15,color:"inherit"};
+    const inpQ = {width:40,textAlign:"center" as const,border:"0.5px solid var(--color-border-tertiary)",borderRadius:6,padding:"2px",fontSize:13,background:"transparent",color:"inherit"};
     return (
-      <div key={p.id} style={{border:qty>0?"1.5px solid #2d6a4f":"0.5px solid var(--color-border-tertiary)",borderRadius:10,padding:"0.75rem",textAlign:"center",background:qty>0?"#f0faf4":"var(--color-background-primary)"}}>
+      <div key={p.id} style={{border:elegido?"1.5px solid #2d6a4f":"0.5px solid var(--color-border-tertiary)",borderRadius:10,padding:"0.75rem",textAlign:"center",background:elegido?"#f0faf4":"var(--color-background-primary)"}}>
         <span style={{fontSize:26,display:"block",marginBottom:4}}>{p.emoji}</span>
         <p style={{fontSize:12,fontWeight:500,margin:"0 0 2px"}}>{p.nombre}</p>
         <p style={{fontSize:11,color:"#888",margin:"0 0 2px"}}>por {p.unidad}</p>
         {p.precio?<p style={{fontSize:12,color:"#2d6a4f",fontWeight:500,margin:"0 0 8px"}}>{p.precio.toFixed(2)} €/{p.unidad}</p>:<p style={{fontSize:11,color:"#ccc",margin:"0 0 8px"}}>precio a consultar</p>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-          <button style={{width:24,height:24,borderRadius:12,border:"0.5px solid var(--color-border-tertiary)",background:"transparent",cursor:"pointer",fontSize:15,color:"inherit"}} onClick={()=>setCantidad(p.id,qty-(entera?1:0.1))}>−</button>
-          <input type="number" min="0" step={entera?1:0.1} value={qty||""} placeholder="0" onChange={e=>setCantidad(p.id,e.target.value)} style={{width:40,textAlign:"center",border:"0.5px solid var(--color-border-tertiary)",borderRadius:6,padding:"2px",fontSize:13,background:"transparent",color:"inherit"}} />
-          <button style={{width:24,height:24,borderRadius:12,border:"0.5px solid var(--color-border-tertiary)",background:"transparent",cursor:"pointer",fontSize:15,color:"inherit"}} onClick={()=>setCantidad(p.id,qty+(entera?1:0.1))}>+</button>
+          <button style={btnQ} onClick={()=>setCantidad(p.id,qty-(entera?1:0.1))}>−</button>
+          <input type="number" min="0" step={entera?1:0.1} value={qty||""} placeholder="0" onChange={e=>setCantidad(p.id,e.target.value)} style={inpQ} />
+          <button style={btnQ} onClick={()=>setCantidad(p.id,qty+(entera?1:0.1))}>+</button>
+          {p.unidad==="kg"&&<span style={{fontSize:11,color:"#888"}}>kg</span>}
         </div>
+        {p.unidad==="kg"&&(
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:6}}>
+            <button style={btnQ} onClick={()=>setUnidades(p.id,uds-1)}>−</button>
+            <input type="number" min="0" step={1} value={uds||""} placeholder="0" onChange={e=>setUnidades(p.id,e.target.value)} style={inpQ} />
+            <button style={btnQ} onClick={()=>setUnidades(p.id,uds+1)}>+</button>
+            <span style={{fontSize:11,color:"#888"}}>uds</span>
+          </div>
+        )}
         {qty>0&&p.precio?<p style={{fontSize:12,color:"#2d6a4f",fontWeight:500,marginTop:6,marginBottom:0}}>{(p.precio*qty).toFixed(2)} €</p>:null}
+        {uds>0?<p style={{fontSize:11,color:"#888",marginTop:6,marginBottom:0}}>se pesa en tienda</p>:null}
       </div>
     );
   });
@@ -683,8 +715,9 @@ export default function ReservasApp() {
       {productosSeleccionados.length>0&&(
         <div style={s.seccion}>
           <h3 style={{fontSize:15,fontWeight:500,marginBottom:10}}>Tu selección</h3>
-          {productosSeleccionados.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {cantidades[p.id]} {p.unidad}</span><span style={{fontWeight:500}}>{p.precio?`${(p.precio*cantidades[p.id]).toFixed(2)} €`:"-"}</span></div>))}
+          {productosSeleccionados.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span><span style={{fontWeight:500}}>{p.unidad===UDS?"se pesa en tienda":p.precio?`${(p.precio*p.cantidad).toFixed(2)} €`:"-"}</span></div>))}
           {totalPedido>0&&(<div style={s.totalBox}><span style={{fontWeight:500}}>Total estimado</span><span style={{fontSize:18,fontWeight:600,color:"#2d6a4f"}}>{totalPedido.toFixed(2)} €</span></div>)}
+          {hayPorUnidades&&<p style={{fontSize:12,color:"#888",margin:"6px 0 0"}}>Los productos pedidos por unidades no están incluidos en el total: se pesan en tienda.</p>}
         </div>
       )}
 

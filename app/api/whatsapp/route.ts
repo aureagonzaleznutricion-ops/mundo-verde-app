@@ -23,7 +23,11 @@ export async function POST(req: NextRequest) {
     .map(
       (p) =>
         `${p.emoji} ${p.nombre}: ${p.cantidad} ${p.unidad}${
-          p.precio ? ` - ${(p.precio * p.cantidad).toFixed(2)} EUR` : ""
+          p.precio
+            ? ` - ${(p.precio * p.cantidad).toFixed(2)} EUR`
+            : p.unidad === "uds"
+            ? " (se pesa en tienda)"
+            : ""
         }`
     )
     .join(", ");
