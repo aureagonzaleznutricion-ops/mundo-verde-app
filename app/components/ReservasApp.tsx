@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { supabase } from "../supabase";
+import { enviarReserva, avisoFallo, quitarProductos } from "./reserva-cliente";
+import { MAX_NOMBRE, MAX_TEXTO, MAX_CANTIDAD } from "../api/reserva/logica";
 
 const UNIDADES = ["kg","unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"];
 const isEntera = (u: string) => ["unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"].includes(u);
@@ -71,6 +73,8 @@ export default function ReservasApp() {
   const [unidadesSel, setUnidadesSel] = useState<Record<number,number>>({});
   const [cliente, setCliente] = useState({nombre:"",telefono:"",email:""});
   const [errores, setErrores] = useState<Record<string,string>>({});
+  const [avisoEnvio, setAvisoEnvio] = useState("");
+  const [confirmada, setConfirmada] = useState<(Pedido & {whatsapp:boolean})|null>(null);
   const [otrosProductos, setOtrosProductos] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [diaRecogida, setDiaRecogida] = useState("");
@@ -152,8 +156,8 @@ export default function ReservasApp() {
     setGuardandoConfig(false);
   };
 
-  const cargarProductos = async () => {
-    setCargando(true);
+  const cargarProductos = async (conEspera = true) => {
+    if (conEspera) setCargando(true);
     const { data } = await supabase.from("productos").select("*").order("categoria").order("nombre");
     if (data) setProductos(data);
     setCargando(false);
@@ -180,12 +184,12 @@ export default function ReservasApp() {
   };
 
   const setCantidad = (id: number, val: string|number) => {
-    const n = Math.max(0, parseFloat(parseFloat(String(val||0)).toFixed(1)));
+    const n = Math.min(MAX_CANTIDAD, Math.max(0, parseFloat(parseFloat(String(val||0)).toFixed(1))));
     setCantidades(prev => ({...prev,[id]:n}));
     if (n>0) setUnidadesSel(prev => ({...prev,[id]:0}));
   };
   const setUnidades = (id: number, val: string|number) => {
-    const n = Math.max(0, Math.round(parseFloat(String(val||0)) || 0));
+    const n = Math.min(MAX_CANTIDAD, Math.max(0, Math.round(parseFloat(String(val||0)) || 0)));
     setUnidadesSel(prev => ({...prev,[id]:n}));
     if (n>0) setCantidades(prev => ({...prev,[id]:0}));
   };
@@ -193,7 +197,7 @@ export default function ReservasApp() {
   // Cada producto elegido, con su cantidad: en kg (con precio) o en unidades (sin precio, se pesa en tienda)
   const productosSeleccionados: ProductoConCantidad[] = productos.flatMap(p =>
     cantidades[p.id] > 0 ? [{...p, cantidad:cantidades[p.id]}]
-    : unidadesSel[p.id] > 0 ? [{...p, cantidad:unidadesSel[p.id], unidad:UDS, precio:0}]
+    : unidadesSel[p.id] > 0 && p.unidad==="kg" ? [{...p, cantidad:unidadesSel[p.id], unidad:UDS, precio:0}]
     : []);
   const hayPorUnidades = productosSeleccionados.some(p => p.unidad===UDS);
   const totalPedido = productosSeleccionados.reduce((sum,p) => sum+((p.precio||0)*p.cantidad), 0);
@@ -211,53 +215,35 @@ export default function ReservasApp() {
 
   const enviarPedido = async () => {
     if (!validar()) return;
-    setGuardando(true);
-    const fecha = hoy.toLocaleDateString("es-ES");
-    const hora = hoy.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
-    const lineas = productosSeleccionados.map(p => ({producto_id:p.id, nombre:p.nombre, emoji:p.emoji, unidad:p.unidad, cantidad:p.cantidad, precio:p.precio||0}));
-    const { data: pedidoData, error } = await supabase.rpc("crear_pedido", {
-      p_pedido: {
-        fecha, hora, cliente_nombre:cliente.nombre, cliente_telefono:cliente.telefono, cliente_email:cliente.email,
-        otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida,
-      },
-      p_lineas: lineas,
+    setGuardando(true); setAvisoEnvio("");
+    const resultado = await enviarReserva({
+      cliente,
+      lineas: productosSeleccionados.map(p => {
+        const visto = productos.find(x => x.id===p.id)!; // precio y unidad tal como se muestran en la lista
+        return { producto_id:p.id, cantidad:p.cantidad, porUnidades:p.unidad===UDS, precioVisto:visto.precio||0, unidadVista:visto.unidad };
+      }),
+      otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida,
     });
-    if (error) console.error("Error al guardar el pedido:", error);
-    if (!error && pedidoData) {
-      const nuevoPedido: Pedido = { id:pedidoData.id, fecha, hora, cliente:{...cliente}, productos:productosSeleccionados, otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida, estado:"pendiente" };
+    if (resultado.estado==="guardada") {
+      const { id, fecha, hora, whatsapp } = resultado;
+      const nuevoPedido: Pedido = { id, fecha, hora, cliente:{...cliente}, productos:resultado.lineas.map(l=>({...l, id:l.producto_id, categoria:"", activo:true})), otros:otrosProductos.trim(), observaciones:observaciones.trim(), dia_recogida:diaRecogida, estado:"pendiente" };
       setPedidos(prev => [nuevoPedido,...prev]);
-
-
-      try {
-        // ✅ WhatsApp de confirmación al cliente (vía Twilio)
-        await fetch("/api/whatsapp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            telefono: cliente.telefono,
-            nombre: cliente.nombre,
-            productos: productosSeleccionados.map((p) => ({
-              emoji: p.emoji,
-              nombre: p.nombre,
-              cantidad: p.cantidad,
-              unidad: p.unidad,
-              precio: p.precio || 0,
-            })),
-            total: totalPedido,
-            dia_recogida: diaRecogida,
-            otros: otrosProductos.trim(),
-            observaciones: observaciones.trim(),
-          }),
-        });
-      } catch(e) { console.error("Error notificación:", e); }
-
+      setConfirmada({...nuevoPedido, whatsapp});
       setVista("confirmacion");
+    } else {
+      if (resultado.estado==="cambios") {
+        await cargarProductos(false);
+        const ids = resultado.noDisponibles.map(p => p.id);
+        setCantidades(prev => quitarProductos(prev, ids));
+        setUnidadesSel(prev => quitarProductos(prev, ids));
+      }
+      setAvisoEnvio(avisoFallo(resultado));
     }
     setGuardando(false);
   };
 
   const nuevaReserva = () => {
-    setCantidades({}); setUnidadesSel({}); setCliente({nombre:"",telefono:"",email:""}); setOtrosProductos(""); setObservaciones(""); setDiaRecogida(""); setErrores({}); setVista("cliente");
+    setCantidades({}); setUnidadesSel({}); setCliente({nombre:"",telefono:"",email:""}); setOtrosProductos(""); setObservaciones(""); setDiaRecogida(""); setErrores({}); setAvisoEnvio(""); setConfirmada(null); setVista("cliente");
   };
 
   const entrarPanel = async () => {
@@ -364,16 +350,18 @@ export default function ReservasApp() {
     totalBox:{background:"#f0faf4",border:"1px solid #2d6a4f",borderRadius:10,padding:"0.75rem 1rem",marginTop:"0.75rem",display:"flex",justifyContent:"space-between",alignItems:"center"},
   };
 
-  if (vista==="confirmacion") {
-    const ultimo = pedidos[0];
+  if (vista==="confirmacion" && confirmada) {
+    const ultimo = confirmada;
     const totalConfirmacion = ultimo.productos.reduce((sum,p)=>sum+((p.precio||0)*p.cantidad),0);
     return (
       <div style={s.app}>
         <div style={s.header}><h1 style={s.titulo}>🌿 Mundo Verde Pontevedra</h1><p style={s.subtitulo}>Reserva de productos frescos · Pontevedra</p></div>
         <div style={s.confirmBox}>
           <div style={{fontSize:48}}>✅</div>
-          <h2 style={{color:"#2d6a4f",margin:"0.5rem 0"}}>¡Reserva enviada!</h2>
-          <p style={{color:"#555",fontSize:14,margin:"0.5rem 0 0.5rem"}}>Gracias, <strong>{ultimo.cliente.nombre}</strong>. Te hemos enviado la confirmación por WhatsApp 💬</p>
+          <h2 style={{color:"#2d6a4f",margin:"0.5rem 0"}}>¡Reserva guardada!</h2>
+          <p style={{color:"#555",fontSize:14,margin:"0.5rem 0 0.5rem"}}>Gracias, <strong>{ultimo.cliente.nombre}</strong>. {ultimo.whatsapp
+            ? "Reserva guardada. Estamos enviándote la confirmación por WhatsApp. 💬"
+            : "Reserva guardada, pero no hemos podido enviarte el WhatsApp. No hace falta que la repitas."}</p>
           {ultimo.dia_recogida && <p style={{fontSize:14,fontWeight:600,color:"#2d6a4f",margin:"0 0 1rem"}}>📅 Recogida el {ultimo.dia_recogida}</p>}
           <div style={{textAlign:"left",marginBottom:"0.5rem"}}>
             {ultimo.productos.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span><span style={{fontWeight:500}}>{p.unidad===UDS?"se pesa en tienda":`${((p.precio||0)*p.cantidad).toFixed(2)} €`}</span></div>))}
@@ -636,14 +624,14 @@ export default function ReservasApp() {
         {p.precio?<p style={{fontSize:12,color:"#2d6a4f",fontWeight:500,margin:"0 0 8px"}}>{p.precio.toFixed(2)} €/{p.unidad}</p>:<p style={{fontSize:11,color:"#ccc",margin:"0 0 8px"}}>precio a consultar</p>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <button style={btnQ} onClick={()=>setCantidad(p.id,qty-(entera?1:0.1))}>−</button>
-          <input type="number" min="0" step={entera?1:0.1} value={qty||""} placeholder="0" onChange={e=>setCantidad(p.id,e.target.value)} style={inpQ} />
+          <input type="number" min="0" max={MAX_CANTIDAD} step={entera?1:0.1} value={qty||""} placeholder="0" onChange={e=>setCantidad(p.id,e.target.value)} style={inpQ} />
           <button style={btnQ} onClick={()=>setCantidad(p.id,qty+(entera?1:0.1))}>+</button>
           {p.unidad==="kg"&&<span style={{fontSize:11,color:"#888"}}>kg</span>}
         </div>
         {p.unidad==="kg"&&(
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:6}}>
             <button style={btnQ} onClick={()=>setUnidades(p.id,uds-1)}>−</button>
-            <input type="number" min="0" step={1} value={uds||""} placeholder="0" onChange={e=>setUnidades(p.id,e.target.value)} style={inpQ} />
+            <input type="number" min="0" max={MAX_CANTIDAD} step={1} value={uds||""} placeholder="0" onChange={e=>setUnidades(p.id,e.target.value)} style={inpQ} />
             <button style={btnQ} onClick={()=>setUnidades(p.id,uds+1)}>+</button>
             <span style={{fontSize:11,color:"#888"}}>uds</span>
           </div>
@@ -703,13 +691,13 @@ export default function ReservasApp() {
       <div style={{...s.seccion,marginTop:"1.5rem"}}>
         <h3 style={{fontSize:15,fontWeight:500,marginBottom:6}}>🛒 Otros productos</h3>
         <p style={{fontSize:13,color:"#666",marginBottom:10}}>¿Buscas algo que no está en la lista? Descríbelo aquí.</p>
-        <textarea placeholder="Ej: Aguacates (2 unidades), Remolacha (1 kg)..." value={otrosProductos} onChange={e=>setOtrosProductos(e.target.value)} rows={3} style={s.textarea} />
+        <textarea placeholder="Ej: Aguacates (2 unidades), Remolacha (1 kg)..." value={otrosProductos} onChange={e=>setOtrosProductos(e.target.value)} maxLength={MAX_TEXTO} rows={3} style={s.textarea} />
       </div>
 
       <div style={{...s.seccion,marginTop:"0"}}>
         <h3 style={{fontSize:15,fontWeight:500,marginBottom:6}}>💬 Observaciones</h3>
         <p style={{fontSize:13,color:"#666",marginBottom:10}}>¿Tienes algún comentario o indicación para tu pedido?</p>
-        <textarea placeholder="Ej: Por favor, que las manzanas sean pequeñas..." value={observaciones} onChange={e=>setObservaciones(e.target.value)} rows={3} style={s.textarea} />
+        <textarea placeholder="Ej: Por favor, que las manzanas sean pequeñas..." value={observaciones} onChange={e=>setObservaciones(e.target.value)} maxLength={MAX_TEXTO} rows={3} style={s.textarea} />
       </div>
 
       {productosSeleccionados.length>0&&(
@@ -738,10 +726,11 @@ export default function ReservasApp() {
         {([["nombre","Nombre completo","María García"],["telefono","Teléfono","600 000 000"],["email","Email","maria@email.com"]] as [keyof typeof cliente,string,string][]).map(([campo,lbl,ph])=>(
           <div key={campo} style={{marginBottom:12}}>
             <label style={s.label}>{lbl}</label>
-            <input placeholder={ph} value={cliente[campo]} onChange={e=>setCliente(c=>({...c,[campo]:e.target.value}))} style={{...s.input,border:errores[campo]?"0.5px solid #e24b4a":"0.5px solid var(--color-border-tertiary)"}} />
+            <input placeholder={ph} maxLength={campo==="nombre"?MAX_NOMBRE:campo==="telefono"?30:200} value={cliente[campo]} onChange={e=>setCliente(c=>({...c,[campo]:e.target.value}))} style={{...s.input,border:errores[campo]?"0.5px solid #e24b4a":"0.5px solid var(--color-border-tertiary)"}} />
             {errores[campo]&&<p style={s.error}>{errores[campo]}</p>}
           </div>
         ))}
+        {avisoEnvio&&<p role="alert" style={{...s.error,fontSize:14,lineHeight:1.5,border:"1px solid #e24b4a",borderRadius:8,padding:"10px 12px",marginBottom:8}}>{avisoEnvio}</p>}
         <button style={{...s.btnPrimary(),width:"100%",padding:"12px",marginTop:4}} onClick={enviarPedido} disabled={guardando}>
           {guardando?"Enviando...":"Enviar reserva"}
         </button>
