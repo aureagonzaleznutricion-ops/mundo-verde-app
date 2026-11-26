@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { supabase } from "../supabase";
 import { enviarReserva, avisoFallo, quitarProductos } from "./reserva-cliente";
-import { MAX_NOMBRE, MAX_TEXTO, MAX_CANTIDAD } from "../api/reserva/logica";
+import { MAX_NOMBRE, MAX_OTROS, MAX_OBSERVACIONES, MAX_CANTIDAD } from "../api/reserva/logica";
 
 const UNIDADES = ["kg","unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"];
 const isEntera = (u: string) => ["unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"].includes(u);
@@ -691,13 +691,16 @@ export default function ReservasApp() {
       <div style={{...s.seccion,marginTop:"1.5rem"}}>
         <h3 style={{fontSize:15,fontWeight:500,marginBottom:6}}>🛒 Otros productos</h3>
         <p style={{fontSize:13,color:"#666",marginBottom:10}}>¿Buscas algo que no está en la lista? Descríbelo aquí.</p>
-        <textarea placeholder="Ej: Aguacates (2 unidades), Remolacha (1 kg)..." value={otrosProductos} onChange={e=>setOtrosProductos(e.target.value)} maxLength={MAX_TEXTO} rows={3} style={s.textarea} />
+        <textarea placeholder="Ej: Aguacates (2 unidades), Remolacha (1 kg)..." value={otrosProductos} onChange={e=>setOtrosProductos(e.target.value)} maxLength={MAX_OTROS} rows={3} style={s.textarea} />
+        <p aria-live="polite" style={otrosProductos.length>=MAX_OTROS?s.error:{fontSize:12,color:"#888",textAlign:"right",marginTop:4}}>
+          {otrosProductos.length>=MAX_OTROS ? `Has llegado al máximo de ${MAX_OTROS} caracteres. Comprueba que no falte nada al final.` : `${otrosProductos.length} / ${MAX_OTROS}`}
+        </p>
       </div>
 
       <div style={{...s.seccion,marginTop:"0"}}>
         <h3 style={{fontSize:15,fontWeight:500,marginBottom:6}}>💬 Observaciones</h3>
         <p style={{fontSize:13,color:"#666",marginBottom:10}}>¿Tienes algún comentario o indicación para tu pedido?</p>
-        <textarea placeholder="Ej: Por favor, que las manzanas sean pequeñas..." value={observaciones} onChange={e=>setObservaciones(e.target.value)} maxLength={MAX_TEXTO} rows={3} style={s.textarea} />
+        <textarea placeholder="Ej: Por favor, que las manzanas sean pequeñas..." value={observaciones} onChange={e=>setObservaciones(e.target.value)} maxLength={MAX_OBSERVACIONES} rows={3} style={s.textarea} />
       </div>
 
       {productosSeleccionados.length>0&&(

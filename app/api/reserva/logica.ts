@@ -2,10 +2,15 @@
 // Sin dependencias: la base de datos y Twilio llegan desde fuera (ver route.ts).
 
 export const MAX_NOMBRE = 120;
-export const MAX_TEXTO = 500;
+export const MAX_OTROS = 1500; // hay clientes que escriben aquí la lista entera
+export const MAX_OBSERVACIONES = 500;
 export const MAX_CANTIDAD = 100;
 const DIAS = ["Martes", "Jueves"];
 const UDS = "uds";
+// El mensaje ya relleno no puede pasar de 1024 caracteres. 240 cubre el texto fijo de la plantilla de Twilio (223) con margen.
+const MAX_MENSAJE = 1024;
+const TEXTO_PLANTILLA = 240;
+const RECORTADO = "… (mensaje recortado: tu pedido completo está guardado)";
 
 export type LineaEntrada = { producto_id: number; cantidad: number; porUnidades: boolean; precioVisto: number; unidadVista: string };
 export type Entrada = {
@@ -53,8 +58,8 @@ function validar(e: unknown): Entrada | string {
   if (nombre.trim().length > MAX_NOMBRE) return `El nombre no puede pasar de ${MAX_NOMBRE} caracteres.`;
   if (!telefono.trim() || telefono.length > 30) return "Revisa el teléfono.";
   if (email.length > 200 || !/^\S+@\S+\.\S+$/.test(email.trim())) return "Email no válido.";
-  if (otros.trim().length > MAX_TEXTO || observaciones.trim().length > MAX_TEXTO)
-    return `«Otros» y «Observaciones» no pueden pasar de ${MAX_TEXTO} caracteres.`;
+  if (otros.trim().length > MAX_OTROS) return `«Otros» no puede pasar de ${MAX_OTROS} caracteres.`;
+  if (observaciones.trim().length > MAX_OBSERVACIONES) return `«Observaciones» no puede pasar de ${MAX_OBSERVACIONES} caracteres.`;
   if (!DIAS.includes(dia_recogida)) return "Selecciona el día de recogida.";
   if (e.lineas.length === 0 && !otros.trim()) return "Selecciona al menos un producto.";
   if (e.lineas.length > 200) return mal;
@@ -79,12 +84,17 @@ function variablesMensaje(r: Entrada, lineas: LineaPedido[]): Record<"1" | "2" |
     }`).join(", ");
   const detalle = [productos, r.otros && `Otros: ${r.otros}`, r.observaciones && `Obs: ${r.observaciones}`].filter(Boolean).join(" | ");
   const total = lineas.reduce((suma, p) => suma + p.precio * p.cantidad, 0);
-  return {
-    "1": unaLinea(r.cliente.nombre),
-    "2": unaLinea(detalle),
-    "3": total > 0 ? total.toFixed(2) : "Por confirmar",
-    "4": r.dia_recogida,
-  };
+  const nombre = unaLinea(r.cliente.nombre);
+  const importe = total > 0 ? total.toFixed(2) : "Por confirmar";
+  const hueco = MAX_MENSAJE - TEXTO_PLANTILLA - nombre.length - importe.length - r.dia_recogida.length;
+  return { "1": nombre, "2": recortar(unaLinea(detalle), hueco), "3": importe, "4": r.dia_recogida };
+}
+
+// Solo se recorta el mensaje: el pedido se guarda entero.
+function recortar(texto: string, maximo: number): string {
+  if (texto.length <= maximo) return texto;
+  const corte = texto.slice(0, maximo - RECORTADO.length).replace(/[\uD800-\uDBFF]$/, ""); // sin emojis a medias
+  return corte.trimEnd() + RECORTADO;
 }
 
 export async function procesarReserva(entrada: unknown, deps: Deps): Promise<Resultado> {

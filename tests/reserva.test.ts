@@ -74,7 +74,7 @@ test("por unidades en un producto que no va por kg: inválida", async () => {
 test("límites rechazados", async () => {
   for (const mala of [
     conCliente({ nombre: "a".repeat(121) }), conCliente({ nombre: "  " }), conCliente({ telefono: "" }), conCliente({ email: "sin-arroba" }),
-    base({ otros: "a".repeat(501) }), base({ observaciones: "a".repeat(501) }),
+    base({ otros: "a".repeat(1501) }), base({ observaciones: "a".repeat(501) }),
     base({ lineas: [{ ...pera, cantidad: 0 }] }), base({ lineas: [{ ...pera, cantidad: 101 }] }), base({ lineas: [{ ...pera, cantidad: NaN }] }),
     base({ dia_recogida: "Lunes" }), base({ lineas: [], otros: " " }),
   ]) {
@@ -85,7 +85,7 @@ test("límites rechazados", async () => {
 });
 
 test("límites exactos aceptados", async () => {
-  const r = await procesarReserva(base({ cliente: { ...base().cliente, nombre: "a".repeat(120) }, otros: "a".repeat(500), observaciones: "a".repeat(500), lineas: [{ ...pera, cantidad: 100 }] }), falso().deps);
+  const r = await procesarReserva(base({ cliente: { ...base().cliente, nombre: "a".repeat(120) }, otros: "a".repeat(1500), observaciones: "a".repeat(500), lineas: [{ ...pera, cantidad: 100 }] }), falso().deps);
   assert.equal(r.estado, "guardada");
 });
 
@@ -153,4 +153,36 @@ test("cuerpos mal formados", async () => {
 test("producto sin precio no cuenta como cambio", async () => {
   const r = await procesarReserva(base({ lineas: [{ producto_id: 4, cantidad: 1, porUnidades: false, precioVisto: 0, unidadVista: "kg" }] }), falso().deps);
   assert.equal(r.estado, "guardada");
+});
+
+// Texto de la plantilla aprobada en Twilio, para medir el mensaje tal como llega.
+const PLANTILLA = "🌿 *Mundo Verde Pontevedra*\n¡Hola {{1}}! Hemos recibido tu reserva ✅\n\n{{2}}\n\n💰 *Total estimado: {{3}} €*\n📅 *Recogida: {{4}}*\n\n¡Gracias por confiar en nosotras! 🌿\n\n_⚠️ Este es un mensaje automático. Para consultas escríbenos al 604 034 893._";
+const montado = (v: Record<string, string>) => PLANTILLA.replace(/\{\{(\d)\}\}/g, (_, n) => v[n]);
+const AVISO = "… (mensaje recortado: tu pedido completo está guardado)";
+
+test("pedido muy largo: se guarda entero y el mensaje cabe en 1024", async () => {
+  for (const relleno of ["a", "🥕"]) {
+    const f = falso();
+    const otros = relleno.repeat(1500 / relleno.length);
+    const r: any = await procesarReserva(base({ cliente: { ...base().cliente, nombre: "n".repeat(120) }, otros, observaciones: "o".repeat(500) }), f.deps);
+    assert.equal(r.estado, "guardada");
+    assert.equal(f.guardados[0].pedido.otros, otros);
+    const v = f.enviados[0].variables;
+    assert.ok(montado(v).length <= 1024, String(montado(v).length));
+    assert.ok(montado(v).length > 1000);
+    assert.ok(v["2"].endsWith(AVISO));
+    assert.ok(v["2"].isWellFormed(), "no debe partir un emoji");
+  }
+});
+
+test("pedido normal: el mensaje no se recorta", async () => {
+  const f = falso();
+  await procesarReserva(base({ otros: "x".repeat(300) }), f.deps);
+  assert.equal(f.enviados[0].variables["2"], "🍐 Pera: 2 kg - 9.90 EUR | Otros: " + "x".repeat(300));
+});
+
+test("«Otros» con varias líneas se guarda tal cual", async () => {
+  const f = falso();
+  await procesarReserva(base({ otros: "1 kg tomates\n2 limones" }), f.deps);
+  assert.equal(f.guardados[0].pedido.otros, "1 kg tomates\n2 limones");
 });
