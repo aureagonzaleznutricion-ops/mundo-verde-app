@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { supabase } from "../supabase";
 import { enviarReserva, avisoFallo, quitarProductos } from "./reserva-cliente";
+import { dibujoDe } from "./dibujos";
 import { MAX_NOMBRE, MAX_OTROS, MAX_OBSERVACIONES, MAX_CANTIDAD } from "../api/reserva/logica";
 
 const UNIDADES = ["kg","unidade","mollo","manoxo","bolsa","bandexa","tarrina","tarrina 250g"];
@@ -662,7 +663,9 @@ export default function ReservasApp() {
       <div key={p.id} style={{background:"#fff",borderRadius:22,padding:10,display:"flex",flexDirection:"column",gap:6,boxShadow:elegido?"0 0 0 2px #2f6b4f, 0 2px 10px rgba(27,42,34,0.06)":"0 2px 10px rgba(27,42,34,0.06)"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,minHeight:44}}>
           <div style={{width:44,height:44,flex:"none",borderRadius:14,background:fondoDibujo,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,overflow:"hidden"}}>
-            {p.imagen_url ? <img src={p.imagen_url} alt="" width={36} height={36} style={{width:36,height:36,objectFit:"contain"}} /> : <span aria-hidden="true">{p.emoji}</span>}
+            {(p.imagen_url || dibujoDe(p.nombre))
+              ? <img src={p.imagen_url || dibujoDe(p.nombre)!} alt="" width={40} height={40} loading="lazy" style={{width:40,height:40,objectFit:"contain"}} />
+              : <span aria-hidden="true">{p.emoji}</span>}
           </div>
           <div style={{display:"flex",flexDirection:"column",minWidth:0}}>
             <span style={{fontFamily:"var(--font-lora), Georgia, serif",fontSize:14,fontWeight:600,lineHeight:1.15}}>{p.nombre}</span>
