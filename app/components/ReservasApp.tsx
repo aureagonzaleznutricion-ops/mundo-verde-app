@@ -107,6 +107,8 @@ export default function ReservasApp() {
   const [filtroCat, setFiltroCat] = useState("todos");
   const [busqueda, setBusqueda] = useState("");
   const [buscaCliente, setBuscaCliente] = useState("");
+  // Texto que el cliente está escribiendo en un contador (para poder teclear "1,5" sin que se borre la coma)
+  const [escribiendo, setEscribiendo] = useState<{clave:string;texto:string}|null>(null);
   const [catCliente, setCatCliente] = useState<"todos"|"fruta"|"verdura">("todos");
   const [confirmEliminar, setConfirmEliminar] = useState<number|null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -639,11 +641,16 @@ export default function ReservasApp() {
     const fondoDibujo = p.categoria==="fruta" ? "#f6e3d4" : "#dcebdf";
     const contador = (valor: number, etiqueta: string, menos: () => void, mas: () => void, cambiar: (v: string) => void, paso: number) => {
       const activo = valor>0;
+      const clave = `${p.id}-${etiqueta}`;
+      const mostrado = escribiendo?.clave===clave ? escribiendo.texto : (valor ? String(valor).replace(".", ",") : "");
       return (
         <div style={{display:"flex",alignItems:"center",background:activo?"#dcebdf":"#eef1ea",borderRadius:20,height:40}}>
           <button type="button" aria-label={`Quitar ${etiqueta} de ${p.nombre}`} onClick={menos} style={{width:38,height:40,border:"none",background:"transparent",cursor:"pointer",fontSize:20,color:"#2f6b4f",padding:0}}>−</button>
           <label style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:3,fontSize:12,fontWeight:600,color:activo?"#1b2a22":"#55645b"}}>
-            <input type="number" min="0" max={MAX_CANTIDAD} step={paso} value={valor||""} placeholder="0" onChange={e=>cambiar(e.target.value)} aria-label={`${etiqueta} de ${p.nombre}`}
+            <input type="text" inputMode={paso<1?"decimal":"numeric"} autoComplete="off" value={mostrado} placeholder="0" aria-label={`${etiqueta} de ${p.nombre}`}
+              onFocus={e=>{ setEscribiendo({clave,texto:mostrado}); e.target.select(); }}
+              onChange={e=>{ const t=e.target.value.replace(/[^0-9.,]/g,""); setEscribiendo({clave,texto:t}); cambiar(t.replace(",",".")); }}
+              onBlur={()=>setEscribiendo(null)}
               style={{width:42,height:28,boxSizing:"border-box",textAlign:"center",border:"1px solid #b9c4b6",borderRadius:8,background:"#fff",fontSize:14,fontWeight:700,color:"inherit",padding:0}} />
             {etiqueta}
           </label>
@@ -739,7 +746,7 @@ export default function ReservasApp() {
       </div>
 
       {productosSeleccionados.length>0&&(
-        <div style={s.seccion}>
+        <div id="tu-seleccion" style={{...s.seccion,scrollMarginTop:16}}>
           <h3 style={{fontSize:15,fontWeight:500,marginBottom:10}}>Tu selección</h3>
           {productosSeleccionados.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span><span style={{fontWeight:500}}>{p.unidad===UDS?"se pesa en tienda":p.precio?`${(p.precio*p.cantidad).toFixed(2)} €`:"-"}</span></div>))}
           {totalPedido>0&&(<div style={s.totalBox}><span style={{fontWeight:500}}>Total estimado</span><span style={{fontSize:18,fontWeight:600,color:"#2f6b4f"}}>{totalPedido.toFixed(2)} €</span></div>)}
@@ -775,6 +782,26 @@ export default function ReservasApp() {
         <p style={{fontSize:12,color:"#888",textAlign:"center",marginTop:8}}>Te contactaremos en menos de 24h para confirmar disponibilidad</p>
       </div>
       <p style={{textAlign:"center",marginTop:"2rem"}}><button onClick={()=>setVista("panel")} style={{background:"none",border:"none",color:"#55645b",fontSize:13,textDecoration:"underline",cursor:"pointer",padding:12}}>Acceso tienda</button></p>
+
+      {/* Barra fija con lo que lleva el cliente: siempre a mano mientras elige */}
+      {productosSeleccionados.length>0 && (
+        <>
+          <div style={{height:96}} aria-hidden="true" />
+          <div style={{position:"fixed",left:0,right:0,bottom:0,padding:"0 16px calc(16px + env(safe-area-inset-bottom))",pointerEvents:"none",zIndex:20}}>
+            <div style={{maxWidth:648,margin:"0 auto",pointerEvents:"auto",minHeight:62,boxSizing:"border-box",padding:"10px 10px 10px 20px",borderRadius:31,background:"#1b2a22",color:"#fff",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 24px rgba(27,42,34,0.25)"}}>
+              <div style={{display:"flex",flexDirection:"column",flex:1,minWidth:0}}>
+                <span style={{fontSize:13,color:"#c9d6cd"}}>{productosSeleccionados.length} {productosSeleccionados.length===1?"producto":"productos"}{totalPedido>0?" · total estimado":""}</span>
+                <span style={{fontSize:17,fontWeight:700}}>
+                  {totalPedido>0 ? `${totalPedido.toFixed(2).replace(".", ",")} €` : "Se pesa en tienda"}
+                  {totalPedido>0 && hayPorUnidades && <span style={{fontSize:13,fontWeight:600,color:"#c9d6cd"}}> + lo que se pese</span>}
+                </span>
+              </div>
+              <button type="button" onClick={()=>document.getElementById("tu-seleccion")?.scrollIntoView({behavior:"smooth"})}
+                style={{background:"#f2a65a",color:"#1b2a22",fontWeight:700,fontSize:15,padding:"0 20px",height:44,borderRadius:22,border:"none",cursor:"pointer",fontFamily:"inherit",flex:"none"}}>Ver cesta</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
