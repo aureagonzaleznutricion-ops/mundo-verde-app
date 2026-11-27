@@ -3,19 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f6f0;
+  --foreground: #1b2a22;
   /* Colores que usan los estilos de la app y que no estaban definidos (por eso los campos no tenían borde) */
   --color-border-tertiary: #b9c4b6;
   --color-text-secondary: #3b4a41;
   --color-background-primary: #ffffff;
-  --color-background-secondary: #f5f6f0;
+  --color-background-secondary: #eef1ea;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-raleway), system-ui, sans-serif;
+  font-weight: 500;
 }
 
 @layer utilities {
@@ -23,3 +24,6 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Títulos con la letra Lora */
+h2, h3 { font-family: var(--font-lora), Georgia, serif; }

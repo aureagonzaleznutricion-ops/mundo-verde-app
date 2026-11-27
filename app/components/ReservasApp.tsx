@@ -65,6 +65,21 @@ const HORARIO_DEFAULT: Horario = {
 };
 const FORM_VACIO = {nombre:"",emoji:"🌿",unidad:"kg",categoria:"fruta",precio:0};
 
+// Cabecera de las pantallas que ve el cliente: letras del logo, una línea de texto y el símbolo en el círculo
+function CabeceraCliente({ texto }: { texto: string }) {
+  return (
+    <header style={{background:"#fff",borderRadius:"0 0 24px 24px",boxShadow:"0 4px 16px rgba(27,42,34,0.06)",padding:"16px 20px",marginBottom:"1.25rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+      <div style={{display:"flex",flexDirection:"column",gap:6,minWidth:0}}>
+        <h1 style={{margin:0,lineHeight:0}}><img src="/logo-texto.png" alt="Mundo Verde" width={185} height={24} style={{height:24,width:"auto",display:"block"}} /></h1>
+        <p style={{margin:0,fontSize:13,color:"#55645b"}}>{texto}</p>
+      </div>
+      <div style={{width:52,height:52,flex:"none",borderRadius:26,background:"#fff",boxShadow:"0 0 0 1px #dde3da",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <img src="/logo-simbolo.png" alt="" width={40} height={31} style={{width:40,height:"auto",display:"block"}} />
+      </div>
+    </header>
+  );
+}
+
 export default function ReservasApp() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -322,8 +337,8 @@ export default function ReservasApp() {
   });
 
   const s = {
-    app:{fontFamily:"system-ui, sans-serif",maxWidth:680,margin:"0 auto",paddingBottom:"2rem"},
-    header:{background:"#2d6a4f",color:"#fff",padding:"1.25rem 1.5rem",borderRadius:"0 0 12px 12px",marginBottom:"1.5rem"},
+    app:{fontFamily:"var(--font-raleway), system-ui, sans-serif",maxWidth:680,margin:"0 auto",paddingBottom:"2rem"},
+    header:{background:"#2f6b4f",color:"#fff",padding:"1.25rem 1.5rem",borderRadius:"0 0 12px 12px",marginBottom:"1.5rem"},
     headerRow:{display:"flex",justifyContent:"space-between",alignItems:"center"},
     titulo:{margin:0,fontSize:22,fontWeight:500},
     subtitulo:{margin:"4px 0 0",fontSize:13,opacity:0.85},
@@ -333,21 +348,21 @@ export default function ReservasApp() {
     input:{width:"100%",padding:"9px 12px",borderRadius:8,border:"0.5px solid var(--color-border-tertiary)",fontSize:14,boxSizing:"border-box" as const,background:"transparent",color:"inherit"},
     textarea:{width:"100%",padding:"9px 12px",borderRadius:8,border:"0.5px solid var(--color-border-tertiary)",fontSize:14,boxSizing:"border-box" as const,background:"transparent",color:"inherit",resize:"vertical" as const,lineHeight:1.6,minHeight:80},
     card:{border:"0.5px solid var(--color-border-tertiary)",borderRadius:12,padding:"1.25rem",marginBottom:"1rem",background:"var(--color-background-primary)"},
-    btnPrimary:(color?:string)=>({background:color||"#2d6a4f",color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",fontSize:14,fontWeight:500,cursor:"pointer"}),
+    btnPrimary:(color?:string)=>({background:color||"#2f6b4f",color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",fontSize:14,fontWeight:500,cursor:"pointer"}),
     btnSecondary:{background:"transparent",border:"0.5px solid var(--color-border-tertiary)",borderRadius:8,padding:"8px 14px",fontSize:13,cursor:"pointer",color:"inherit"},
     btnDanger:{background:"transparent",border:"0.5px solid #e24b4a",borderRadius:8,padding:"8px 14px",fontSize:13,cursor:"pointer",color:"#e24b4a"},
     resumenItem:{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",fontSize:14},
-    confirmBox:{background:"#f0faf4",border:"1px solid #2d6a4f",borderRadius:12,padding:"1.5rem",margin:"1rem",textAlign:"center" as const},
+    confirmBox:{background:"#f0faf4",border:"1px solid #2f6b4f",borderRadius:12,padding:"1.5rem",margin:"1rem",textAlign:"center" as const},
     tabs:{display:"flex",gap:4,padding:"0 1rem",marginBottom:"1rem",flexWrap:"wrap" as const},
     tab:{fontSize:12,padding:"6px 12px",borderRadius:20,border:"0.5px solid var(--color-border-tertiary)",cursor:"pointer",background:"transparent",color:"inherit"},
-    tabActivo:{background:"#2d6a4f",color:"#fff",border:"1px solid #2d6a4f"},
+    tabActivo:{background:"#2f6b4f",color:"#fff",border:"1px solid #2f6b4f"},
     statGrid:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"0 1rem",marginBottom:"1.25rem"},
     statCard:{background:"var(--color-background-secondary)",borderRadius:8,padding:"0.75rem",textAlign:"center" as const},
     grid:{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))",gap:8,padding:"0 1rem"},
-    categoriaHeader:{fontSize:12,fontWeight:500,color:"#2d6a4f",textTransform:"uppercase" as const,letterSpacing:1,margin:"1.25rem 0 0.5rem",padding:"0 1rem"},
+    categoriaHeader:{fontSize:12,fontWeight:500,color:"#2f6b4f",textTransform:"uppercase" as const,letterSpacing:1,margin:"1.25rem 0 0.5rem",padding:"0 1rem"},
     error:{color:"#e24b4a",fontSize:12,marginTop:4},
     estadoBadge:(e:string)=>({fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:500,background:e==="confirmado"?"#e8f5e9":e==="gestionado"?"#e3f2fd":"#fff3e0",color:e==="confirmado"?"#2e7d32":e==="gestionado"?"#1565c0":"#e65100"}),
-    totalBox:{background:"#f0faf4",border:"1px solid #2d6a4f",borderRadius:10,padding:"0.75rem 1rem",marginTop:"0.75rem",display:"flex",justifyContent:"space-between",alignItems:"center"},
+    totalBox:{background:"#f0faf4",border:"1px solid #2f6b4f",borderRadius:10,padding:"0.75rem 1rem",marginTop:"0.75rem",display:"flex",justifyContent:"space-between",alignItems:"center"},
   };
 
   if (vista==="confirmacion" && confirmada) {
@@ -355,20 +370,20 @@ export default function ReservasApp() {
     const totalConfirmacion = ultimo.productos.reduce((sum,p)=>sum+((p.precio||0)*p.cantidad),0);
     return (
       <div style={s.app}>
-        <div style={s.header}><h1 style={s.titulo}>🌿 Mundo Verde Pontevedra</h1><p style={s.subtitulo}>Reserva de productos frescos · Pontevedra</p></div>
+        <CabeceraCliente texto="Fruta y verdura ecológica · Pontevedra" />
         <div style={s.confirmBox}>
           <div style={{fontSize:48}}>✅</div>
-          <h2 style={{color:"#2d6a4f",margin:"0.5rem 0"}}>¡Reserva guardada!</h2>
+          <h2 style={{color:"#2f6b4f",margin:"0.5rem 0"}}>¡Reserva guardada!</h2>
           <p style={{color:"#555",fontSize:14,margin:"0.5rem 0 0.5rem"}}>Gracias, <strong>{ultimo.cliente.nombre}</strong>. {ultimo.whatsapp
             ? "Reserva guardada. Estamos enviándote la confirmación por WhatsApp. 💬"
             : "Reserva guardada, pero no hemos podido enviarte el WhatsApp. No hace falta que la repitas."}</p>
-          {ultimo.dia_recogida && <p style={{fontSize:14,fontWeight:600,color:"#2d6a4f",margin:"0 0 1rem"}}>📅 Recogida el {ultimo.dia_recogida}</p>}
+          {ultimo.dia_recogida && <p style={{fontSize:14,fontWeight:600,color:"#2f6b4f",margin:"0 0 1rem"}}>📅 Recogida el {ultimo.dia_recogida}</p>}
           <div style={{textAlign:"left",marginBottom:"0.5rem"}}>
             {ultimo.productos.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span><span style={{fontWeight:500}}>{p.unidad===UDS?"se pesa en tienda":`${((p.precio||0)*p.cantidad).toFixed(2)} €`}</span></div>))}
             {ultimo.otros && <p style={{fontSize:13,color:"#666",marginTop:8}}>📝 {ultimo.otros}</p>}
             {ultimo.observaciones && <p style={{fontSize:13,color:"#555",marginTop:4}}>💬 {ultimo.observaciones}</p>}
           </div>
-          {totalConfirmacion>0 && (<div style={s.totalBox}><span style={{fontWeight:500}}>Total estimado</span><span style={{fontSize:18,fontWeight:600,color:"#2d6a4f"}}>{totalConfirmacion.toFixed(2)} €</span></div>)}
+          {totalConfirmacion>0 && (<div style={s.totalBox}><span style={{fontWeight:500}}>Total estimado</span><span style={{fontSize:18,fontWeight:600,color:"#2f6b4f"}}>{totalConfirmacion.toFixed(2)} €</span></div>)}
           {ultimo.productos.some(p=>p.unidad===UDS) && <p style={{fontSize:12,color:"#888",margin:"6px 0 0"}}>Los productos pedidos por unidades no están incluidos en el total: se pesan en tienda.</p>}
           <button style={{...s.btnSecondary,marginTop:"1rem"}} onClick={nuevaReserva}>Nueva reserva</button>
         </div>
@@ -438,9 +453,9 @@ export default function ReservasApp() {
           {panelTab==="resumen" && (
             Object.keys(totalesPorProducto).length===0
               ? <p style={{color:"#aaa",textAlign:"center",padding:"2rem 0"}}>No hay datos</p>
-              : <div style={{background:"#f0faf4",border:"1px solid #2d6a4f",borderRadius:10,padding:"1rem"}}>
+              : <div style={{background:"#f0faf4",border:"1px solid #2f6b4f",borderRadius:10,padding:"1rem"}}>
                   {Object.entries(totalesPorProducto).sort((a,b)=>b[1].cantidad-a[1].cantidad).map(([k,data])=>(
-                    <div key={k} style={s.resumenItem}><span>{data.emoji} {k.split("|")[0]}</span><span style={{fontWeight:500,color:"#2d6a4f"}}>{fmtCant(data.cantidad,data.unidad)} {data.unidad}</span></div>
+                    <div key={k} style={s.resumenItem}><span>{data.emoji} {k.split("|")[0]}</span><span style={{fontWeight:500,color:"#2f6b4f"}}>{fmtCant(data.cantidad,data.unidad)} {data.unidad}</span></div>
                   ))}
                 </div>
           )}
@@ -464,7 +479,7 @@ export default function ReservasApp() {
                       {p.productos.map((prod:any)=>(<div key={prod.id} style={{...s.resumenItem,fontSize:13}}><span>{prod.emoji} {prod.nombre} × {fmtCant(prod.cantidad,prod.unidad)} {prod.unidad}</span><span>{prod.precio>0?`${((prod.precio||0)*parseFloat(prod.cantidad)).toFixed(2)} €`:prod.unidad===UDS?"se pesa":""}</span></div>))}
                       {p.otros&&<div style={{marginTop:8,padding:"6px 10px",background:"#fff8e1",borderRadius:6,fontSize:12,color:"#5d4037"}}>📝 {p.otros}</div>}
                       {p.observaciones&&<div style={{marginTop:4,padding:"6px 10px",background:"#e3f2fd",borderRadius:6,fontSize:12,color:"#1565c0"}}>💬 {p.observaciones}</div>}
-                      {totalPed>0&&(<div style={{...s.totalBox,marginTop:8}}><span style={{fontSize:13,fontWeight:500}}>Total estimado</span><span style={{fontSize:15,fontWeight:600,color:"#2d6a4f"}}>{totalPed.toFixed(2)} €</span></div>)}
+                      {totalPed>0&&(<div style={{...s.totalBox,marginTop:8}}><span style={{fontSize:13,fontWeight:500}}>Total estimado</span><span style={{fontSize:15,fontWeight:600,color:"#2f6b4f"}}>{totalPed.toFixed(2)} €</span></div>)}
                       <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap" as const}}>
                         {[["pendiente","⏳","#e65100"],["confirmado","✅","#2e7d32"],["gestionado","📦","#1565c0"]].map(([e,icon,color])=>(
                           <button key={e} onClick={()=>cambiarEstado(p.id,e as string)} style={{fontSize:11,padding:"4px 10px",borderRadius:20,border:"none",cursor:"pointer",background:p.estado===e?color:"var(--color-background-secondary)",color:p.estado===e?"#fff":"inherit",fontWeight:p.estado===e?500:400}}>
@@ -487,7 +502,7 @@ export default function ReservasApp() {
                   <div><label style={s.label}>Emoji</label><input style={s.input} placeholder="🥕" value={formProd.emoji} onChange={e=>setFormProd(f=>({...f,emoji:e.target.value}))} /></div>
                   <div><label style={s.label}>Unidad</label><select style={s.input} value={formProd.unidad} onChange={e=>setFormProd(f=>({...f,unidad:e.target.value}))}>{UNIDADES.map(u=><option key={u} value={u}>{u}</option>)}</select></div>
                   <div><label style={s.label}>Precio (€)</label><input type="number" min="0" step="0.01" style={s.input} placeholder="0.00" value={formProd.precio||""} onChange={e=>setFormProd(f=>({...f,precio:parseFloat(e.target.value)||0}))} /></div>
-                  <div style={{gridColumn:"1 / -1"}}><label style={s.label}>Categoría</label><div style={{display:"flex",gap:8}}>{["fruta","verdura"].map(cat=>(<button key={cat} onClick={()=>setFormProd(f=>({...f,categoria:cat}))} style={{...s.btnSecondary,flex:1,background:formProd.categoria===cat?"#2d6a4f":"transparent",color:formProd.categoria===cat?"#fff":"inherit",border:formProd.categoria===cat?"1px solid #2d6a4f":"0.5px solid var(--color-border-tertiary)"}}>{cat==="fruta"?"🍎 Fruta":"🥦 Verdura"}</button>))}</div></div>
+                  <div style={{gridColumn:"1 / -1"}}><label style={s.label}>Categoría</label><div style={{display:"flex",gap:8}}>{["fruta","verdura"].map(cat=>(<button key={cat} onClick={()=>setFormProd(f=>({...f,categoria:cat}))} style={{...s.btnSecondary,flex:1,background:formProd.categoria===cat?"#2f6b4f":"transparent",color:formProd.categoria===cat?"#fff":"inherit",border:formProd.categoria===cat?"1px solid #2f6b4f":"0.5px solid var(--color-border-tertiary)"}}>{cat==="fruta"?"🍎 Fruta":"🥦 Verdura"}</button>))}</div></div>
                 </div>
                 <div style={{display:"flex",gap:8}}>
                   <button style={s.btnPrimary()} onClick={guardarProducto} disabled={!formProd.nombre.trim()||guardando}>{guardando?"Guardando...":editandoId!==null?"Guardar cambios":"Añadir producto"}</button>
@@ -516,7 +531,7 @@ export default function ReservasApp() {
                           <p style={{margin:0,fontSize:14,fontWeight:500}}>{p.nombre}</p>
                           <p style={{margin:0,fontSize:12,color:"#888"}}>por {p.unidad} · {p.categoria}{p.precio?` · ${p.precio.toFixed(2)} €/${p.unidad}`:" · sin precio"}</p>
                           {p.id in stockCG && (
-                            <p style={{margin:0,fontSize:12,fontWeight:500,color:(stockCG[p.id]??0)<=0?"#c62828":"#2d6a4f"}}>
+                            <p style={{margin:0,fontSize:12,fontWeight:500,color:(stockCG[p.id]??0)<=0?"#c62828":"#2f6b4f"}}>
                               📦 Stock ClassicGes: {stockCG[p.id]===null?"sin dato":`${Number(stockCG[p.id]).toLocaleString("es-ES",{maximumFractionDigits:2})} ${p.unidad}`}
                             </p>
                           )}
@@ -617,11 +632,11 @@ export default function ReservasApp() {
     const btnQ = {width:24,height:24,borderRadius:12,border:"0.5px solid var(--color-border-tertiary)",background:"transparent",cursor:"pointer",fontSize:15,color:"inherit"};
     const inpQ = {width:40,textAlign:"center" as const,border:"0.5px solid var(--color-border-tertiary)",borderRadius:6,padding:"2px",fontSize:13,background:"transparent",color:"inherit"};
     return (
-      <div key={p.id} style={{border:elegido?"1.5px solid #2d6a4f":"0.5px solid var(--color-border-tertiary)",borderRadius:10,padding:"0.75rem",textAlign:"center",background:elegido?"#f0faf4":"var(--color-background-primary)"}}>
+      <div key={p.id} style={{border:elegido?"1.5px solid #2f6b4f":"0.5px solid var(--color-border-tertiary)",borderRadius:10,padding:"0.75rem",textAlign:"center",background:elegido?"#f0faf4":"var(--color-background-primary)"}}>
         <span style={{fontSize:26,display:"block",marginBottom:4}}>{p.emoji}</span>
         <p style={{fontSize:12,fontWeight:500,margin:"0 0 2px"}}>{p.nombre}</p>
         <p style={{fontSize:11,color:"#888",margin:"0 0 2px"}}>por {p.unidad}</p>
-        {p.precio?<p style={{fontSize:12,color:"#2d6a4f",fontWeight:500,margin:"0 0 8px"}}>{p.precio.toFixed(2)} €/{p.unidad}</p>:<p style={{fontSize:11,color:"#ccc",margin:"0 0 8px"}}>precio a consultar</p>}
+        {p.precio?<p style={{fontSize:12,color:"#2f6b4f",fontWeight:500,margin:"0 0 8px"}}>{p.precio.toFixed(2)} €/{p.unidad}</p>:<p style={{fontSize:11,color:"#ccc",margin:"0 0 8px"}}>precio a consultar</p>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <button style={btnQ} onClick={()=>setCantidad(p.id,qty-(entera?1:0.1))}>−</button>
           <input type="number" min="0" max={MAX_CANTIDAD} step={entera?1:0.1} value={qty||""} placeholder="0" onChange={e=>setCantidad(p.id,e.target.value)} style={inpQ} />
@@ -636,7 +651,7 @@ export default function ReservasApp() {
             <span style={{fontSize:11,color:"#888"}}>uds</span>
           </div>
         )}
-        {qty>0&&p.precio?<p style={{fontSize:12,color:"#2d6a4f",fontWeight:500,marginTop:6,marginBottom:0}}>{(p.precio*qty).toFixed(2)} €</p>:null}
+        {qty>0&&p.precio?<p style={{fontSize:12,color:"#2f6b4f",fontWeight:500,marginTop:6,marginBottom:0}}>{(p.precio*qty).toFixed(2)} €</p>:null}
         {uds>0?<p style={{fontSize:11,color:"#888",marginTop:6,marginBottom:0}}>se pesa en tienda</p>:null}
       </div>
     );
@@ -645,17 +660,13 @@ export default function ReservasApp() {
   if (!reservasAbiertas) {
     return (
       <div style={s.app}>
-        <div style={s.header}>
-          <div style={s.headerRow}>
-            <div><h1 style={s.titulo}>🌿 Mundo Verde Pontevedra</h1><p style={s.subtitulo}>Reserva de productos frescos · Pontevedra</p></div>
-          </div>
-        </div>
-        <div style={{margin:"2rem 1rem",background:"#f0faf4",border:"1px solid #2d6a4f",borderRadius:12,padding:"2rem",textAlign:"center"}}>
+        <CabeceraCliente texto="Fruta y verdura ecológica · Pontevedra" />
+        <div style={{margin:"2rem 1rem",background:"#f0faf4",border:"1px solid #2f6b4f",borderRadius:12,padding:"2rem",textAlign:"center"}}>
           <div style={{fontSize:48,marginBottom:12}}>🕐</div>
-          <h2 style={{color:"#2d6a4f",margin:"0 0 0.75rem"}}>Reservas cerradas</h2>
+          <h2 style={{color:"#2f6b4f",margin:"0 0 0.75rem"}}>Reservas cerradas</h2>
           <p style={{color:"#555",fontSize:14,margin:0}}>{mensajeCierre}</p>
           <div style={{marginTop:"1.5rem"}}>
-            <p style={{fontSize:13,fontWeight:500,color:"#2d6a4f",marginBottom:8}}>Horario de reservas:</p>
+            <p style={{fontSize:13,fontWeight:500,color:"#2f6b4f",marginBottom:8}}>Horario de reservas:</p>
             {DIAS_SEMANA.filter(d=>horario[d]?.activo).map(d=>(
               <p key={d} style={{fontSize:13,color:"#555",margin:"4px 0"}}>{DIAS_LABELS[d]}: {horario[d].inicio} – {horario[d].fin}</p>
             ))}
@@ -668,11 +679,7 @@ export default function ReservasApp() {
 
   return (
     <div style={s.app}>
-      <div style={s.header}>
-        <div style={s.headerRow}>
-          <div><h1 style={s.titulo}>🌿 Mundo Verde Pontevedra</h1><p style={s.subtitulo}>Reserva de productos frescos · Pontevedra</p></div>
-        </div>
-      </div>
+      <CabeceraCliente texto="Recogida martes o jueves · Rúa Peregrina 54" />
 
       <p style={{padding:"0 1rem",fontSize:14,color:"#666",marginBottom:"0.5rem"}}>Selecciona los productos que deseas reservar y te contactaremos para confirmar.</p>
 
@@ -706,7 +713,7 @@ export default function ReservasApp() {
         <div style={s.seccion}>
           <h3 style={{fontSize:15,fontWeight:500,marginBottom:10}}>Tu selección</h3>
           {productosSeleccionados.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span><span style={{fontWeight:500}}>{p.unidad===UDS?"se pesa en tienda":p.precio?`${(p.precio*p.cantidad).toFixed(2)} €`:"-"}</span></div>))}
-          {totalPedido>0&&(<div style={s.totalBox}><span style={{fontWeight:500}}>Total estimado</span><span style={{fontSize:18,fontWeight:600,color:"#2d6a4f"}}>{totalPedido.toFixed(2)} €</span></div>)}
+          {totalPedido>0&&(<div style={s.totalBox}><span style={{fontWeight:500}}>Total estimado</span><span style={{fontSize:18,fontWeight:600,color:"#2f6b4f"}}>{totalPedido.toFixed(2)} €</span></div>)}
           {hayPorUnidades&&<p style={{fontSize:12,color:"#888",margin:"6px 0 0"}}>Los productos pedidos por unidades no están incluidos en el total: se pesan en tienda.</p>}
         </div>
       )}
@@ -715,7 +722,7 @@ export default function ReservasApp() {
         <h3 style={{fontSize:15,fontWeight:500,marginBottom:10}}>📅 Día de recogida</h3>
         <div style={{display:"flex",gap:10,marginBottom:6}}>
           {["Martes","Jueves"].map(dia=>(
-            <button key={dia} onClick={()=>setDiaRecogida(dia)} style={{flex:1,padding:"12px",borderRadius:10,border:diaRecogida===dia?"2px solid #2d6a4f":"0.5px solid var(--color-border-tertiary)",background:diaRecogida===dia?"#f0faf4":"transparent",color:diaRecogida===dia?"#2d6a4f":"inherit",fontWeight:diaRecogida===dia?600:400,fontSize:15,cursor:"pointer"}}>
+            <button key={dia} onClick={()=>setDiaRecogida(dia)} style={{flex:1,padding:"12px",borderRadius:10,border:diaRecogida===dia?"2px solid #2f6b4f":"0.5px solid var(--color-border-tertiary)",background:diaRecogida===dia?"#f0faf4":"transparent",color:diaRecogida===dia?"#2f6b4f":"inherit",fontWeight:diaRecogida===dia?600:400,fontSize:15,cursor:"pointer"}}>
               📦 {dia}
             </button>
           ))}
