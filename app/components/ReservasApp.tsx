@@ -226,8 +226,7 @@ export default function ReservasApp() {
     const e: Record<string,string> = {};
     if (!cliente.nombre.trim()) e.nombre = "El nombre es obligatorio";
     if (!cliente.telefono.trim()) e.telefono = "El teléfono es obligatorio";
-    if (!cliente.email.trim()) e.email = "El email es obligatorio";
-    else if (!/\S+@\S+\.\S+/.test(cliente.email)) e.email = "Email no válido";
+    if (cliente.email.trim() && !/\S+@\S+\.\S+/.test(cliente.email)) e.email = "Email no válido";
     if (productosSeleccionados.length===0 && !otrosProductos.trim()) e.productos = "Selecciona al menos un producto";
     if (!diaRecogida) e.diaRecogida = "Por favor selecciona el día de recogida";
     setErrores(e); return Object.keys(e).length===0;
@@ -778,7 +777,7 @@ export default function ReservasApp() {
 
       <div style={s.seccion}>
         <h3 style={{fontSize:17,fontWeight:700,margin:"0 0 12px"}}>Tus datos</h3>
-        {([["nombre","Nombre completo","María García"],["telefono","Teléfono","600 000 000"],["email","Email","maria@email.com"]] as [keyof typeof cliente,string,string][]).map(([campo,lbl,ph])=>(
+        {([["nombre","Nombre completo","María García"],["telefono","Teléfono","600 000 000"],["email","Email (opcional)","maria@email.com"]] as [keyof typeof cliente,string,string][]).map(([campo,lbl,ph])=>(
           <div key={campo} style={{marginBottom:12}}>
             <label style={s.label}>{lbl}</label>
             <input placeholder={ph} maxLength={campo==="nombre"?MAX_NOMBRE:campo==="telefono"?30:200} value={cliente[campo]} onChange={e=>setCliente(c=>({...c,[campo]:e.target.value}))} type={campo==="email"?"email":campo==="telefono"?"tel":"text"} autoComplete={campo==="nombre"?"name":campo==="telefono"?"tel":"email"} style={{...s.input,border:errores[campo]?"1.5px solid #c62828":"1px solid var(--color-border-tertiary)"}} />

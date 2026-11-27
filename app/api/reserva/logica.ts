@@ -57,7 +57,8 @@ function validar(e: unknown): Entrada | string {
   if (!nombre.trim()) return "El nombre es obligatorio.";
   if (nombre.trim().length > MAX_NOMBRE) return `El nombre no puede pasar de ${MAX_NOMBRE} caracteres.`;
   if (!telefono.trim() || telefono.length > 30) return "Revisa el teléfono.";
-  if (email.length > 200 || !/^\S+@\S+\.\S+$/.test(email.trim())) return "Email no válido.";
+  // El email es opcional; si se escribe, tiene que tener forma de email
+  if (email.length > 200 || (email.trim() !== "" && !/^\S+@\S+\.\S+$/.test(email.trim()))) return "Email no válido.";
   if (otros.trim().length > MAX_OTROS) return `«Otros» no puede pasar de ${MAX_OTROS} caracteres.`;
   if (observaciones.trim().length > MAX_OBSERVACIONES) return `«Observaciones» no puede pasar de ${MAX_OBSERVACIONES} caracteres.`;
   if (!DIAS.includes(dia_recogida)) return "Selecciona el día de recogida.";

@@ -71,6 +71,11 @@ test("por unidades en un producto que no va por kg: inválida", async () => {
   assert.equal(r.estado, "invalida");
 });
 
+test("el email es opcional", async () => {
+  const r = await procesarReserva(conCliente({ email: "" }), falso().deps);
+  assert.equal(r.estado, "guardada");
+});
+
 test("límites rechazados", async () => {
   for (const mala of [
     conCliente({ nombre: "a".repeat(121) }), conCliente({ nombre: "  " }), conCliente({ telefono: "" }), conCliente({ email: "sin-arroba" }),
