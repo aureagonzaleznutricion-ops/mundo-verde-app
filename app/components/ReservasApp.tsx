@@ -106,6 +106,8 @@ export default function ReservasApp() {
   const [editandoId, setEditandoId] = useState<number|null>(null);
   const [filtroCat, setFiltroCat] = useState("todos");
   const [busqueda, setBusqueda] = useState("");
+  const [buscaCliente, setBuscaCliente] = useState("");
+  const [catCliente, setCatCliente] = useState<"todos"|"fruta"|"verdura">("todos");
   const [confirmEliminar, setConfirmEliminar] = useState<number|null>(null);
   const [guardando, setGuardando] = useState(false);
   const [horario, setHorario] = useState<Horario>(HORARIO_DEFAULT);
@@ -621,38 +623,51 @@ export default function ReservasApp() {
     );
   }
 
-  const frutas = productos.filter(p=>p.categoria==="fruta"&&p.activo);
-  const verduras = productos.filter(p=>p.categoria==="verdura"&&p.activo);
+  // Búsqueda sin tener en cuenta mayúsculas ni tildes
+  const normalizar = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  const coincide = (p: Producto) => !buscaCliente.trim() || normalizar(p.nombre).includes(normalizar(buscaCliente));
+  const frutasTodas = productos.filter(p=>p.categoria==="fruta"&&p.activo);
+  const verdurasTodas = productos.filter(p=>p.categoria==="verdura"&&p.activo);
+  const frutas = catCliente==="verdura" ? [] : frutasTodas.filter(coincide);
+  const verduras = catCliente==="fruta" ? [] : verdurasTodas.filter(coincide);
 
   const renderGrid = (lista: Producto[]) => lista.map(p=>{
     const qty = cantidades[p.id]||0;
     const uds = unidadesSel[p.id]||0;
     const entera = isEntera(p.unidad);
     const elegido = qty>0 || uds>0;
-    const btnQ = {width:24,height:24,borderRadius:12,border:"0.5px solid var(--color-border-tertiary)",background:"transparent",cursor:"pointer",fontSize:15,color:"inherit"};
-    const inpQ = {width:40,textAlign:"center" as const,border:"0.5px solid var(--color-border-tertiary)",borderRadius:6,padding:"2px",fontSize:13,background:"transparent",color:"inherit"};
-    return (
-      <div key={p.id} style={{border:elegido?"1.5px solid #2f6b4f":"0.5px solid var(--color-border-tertiary)",borderRadius:10,padding:"0.75rem",textAlign:"center",background:elegido?"#f0faf4":"var(--color-background-primary)"}}>
-        <span style={{fontSize:26,display:"block",marginBottom:4}}>{p.emoji}</span>
-        <p style={{fontSize:12,fontWeight:500,margin:"0 0 2px"}}>{p.nombre}</p>
-        <p style={{fontSize:11,color:"#888",margin:"0 0 2px"}}>por {p.unidad}</p>
-        {p.precio?<p style={{fontSize:12,color:"#2f6b4f",fontWeight:500,margin:"0 0 8px"}}>{p.precio.toFixed(2)} €/{p.unidad}</p>:<p style={{fontSize:11,color:"#ccc",margin:"0 0 8px"}}>precio a consultar</p>}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-          <button style={btnQ} onClick={()=>setCantidad(p.id,qty-(entera?1:0.1))}>−</button>
-          <input type="number" min="0" max={MAX_CANTIDAD} step={entera?1:0.1} value={qty||""} placeholder="0" onChange={e=>setCantidad(p.id,e.target.value)} style={inpQ} />
-          <button style={btnQ} onClick={()=>setCantidad(p.id,qty+(entera?1:0.1))}>+</button>
-          {p.unidad==="kg"&&<span style={{fontSize:11,color:"#888"}}>kg</span>}
+    const fondoDibujo = p.categoria==="fruta" ? "#f6e3d4" : "#dcebdf";
+    const contador = (valor: number, etiqueta: string, menos: () => void, mas: () => void, cambiar: (v: string) => void, paso: number) => {
+      const activo = valor>0;
+      return (
+        <div style={{display:"flex",alignItems:"center",background:activo?"#dcebdf":"#eef1ea",borderRadius:20,height:40}}>
+          <button type="button" aria-label={`Quitar ${etiqueta} de ${p.nombre}`} onClick={menos} style={{width:38,height:40,border:"none",background:"transparent",cursor:"pointer",fontSize:20,color:"#2f6b4f",padding:0}}>−</button>
+          <label style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:3,fontSize:12,fontWeight:600,color:activo?"#1b2a22":"#55645b"}}>
+            <input type="number" min="0" max={MAX_CANTIDAD} step={paso} value={valor||""} placeholder="0" onChange={e=>cambiar(e.target.value)} aria-label={`${etiqueta} de ${p.nombre}`}
+              style={{width:42,height:28,boxSizing:"border-box",textAlign:"center",border:"1px solid #b9c4b6",borderRadius:8,background:"#fff",fontSize:14,fontWeight:700,color:"inherit",padding:0}} />
+            {etiqueta}
+          </label>
+          <button type="button" aria-label={`Añadir ${etiqueta} de ${p.nombre}`} onClick={mas} style={{width:38,height:40,border:"none",background:"transparent",cursor:"pointer",fontSize:20,color:"#2f6b4f",padding:0}}>+</button>
         </div>
-        {p.unidad==="kg"&&(
-          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:6}}>
-            <button style={btnQ} onClick={()=>setUnidades(p.id,uds-1)}>−</button>
-            <input type="number" min="0" max={MAX_CANTIDAD} step={1} value={uds||""} placeholder="0" onChange={e=>setUnidades(p.id,e.target.value)} style={inpQ} />
-            <button style={btnQ} onClick={()=>setUnidades(p.id,uds+1)}>+</button>
-            <span style={{fontSize:11,color:"#888"}}>uds</span>
+      );
+    };
+    return (
+      <div key={p.id} style={{background:"#fff",borderRadius:22,padding:10,display:"flex",flexDirection:"column",gap:6,boxShadow:elegido?"0 0 0 2px #2f6b4f, 0 2px 10px rgba(27,42,34,0.06)":"0 2px 10px rgba(27,42,34,0.06)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,minHeight:44}}>
+          <div style={{width:44,height:44,flex:"none",borderRadius:14,background:fondoDibujo,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,overflow:"hidden"}}>
+            {p.imagen_url ? <img src={p.imagen_url} alt="" width={36} height={36} style={{width:36,height:36,objectFit:"contain"}} /> : <span aria-hidden="true">{p.emoji}</span>}
           </div>
-        )}
-        {qty>0&&p.precio?<p style={{fontSize:12,color:"#2f6b4f",fontWeight:500,marginTop:6,marginBottom:0}}>{(p.precio*qty).toFixed(2)} €</p>:null}
-        {uds>0?<p style={{fontSize:11,color:"#888",marginTop:6,marginBottom:0}}>se pesa en tienda</p>:null}
+          <div style={{display:"flex",flexDirection:"column",minWidth:0}}>
+            <span style={{fontFamily:"var(--font-lora), Georgia, serif",fontSize:14,fontWeight:600,lineHeight:1.15}}>{p.nombre}</span>
+            {p.precio
+              ? <span style={{fontSize:12,fontWeight:700,color:"#2f6b4f"}}>{p.precio.toFixed(2)} €/{p.unidad}</span>
+              : <span style={{fontSize:12,color:"#55645b"}}>precio a consultar</span>}
+          </div>
+        </div>
+        {contador(qty, entera ? p.unidad : "kg", ()=>setCantidad(p.id,qty-(entera?1:0.1)), ()=>setCantidad(p.id,qty+(entera?1:0.1)), v=>setCantidad(p.id,v), entera?1:0.1)}
+        {p.unidad==="kg" && contador(uds, "uds", ()=>setUnidades(p.id,uds-1), ()=>setUnidades(p.id,uds+1), v=>setUnidades(p.id,v), 1)}
+        {qty>0&&p.precio?<span style={{fontSize:12,fontWeight:700,color:"#2f6b4f",textAlign:"center"}}>{(p.precio*qty).toFixed(2)} €</span>:null}
+        {uds>0?<span style={{fontSize:11,fontWeight:700,color:"#8a3b12",textAlign:"center"}}>Se pesa en tienda</span>:null}
       </div>
     );
   });
@@ -681,14 +696,28 @@ export default function ReservasApp() {
     <div style={s.app}>
       <CabeceraCliente texto="Recogida martes o jueves · Rúa Peregrina 54" />
 
-      <p style={{padding:"0 1rem",fontSize:14,color:"#666",marginBottom:"0.5rem"}}>Selecciona los productos que deseas reservar y te contactaremos para confirmar.</p>
+      <div style={{padding:"0 14px",display:"flex",flexDirection:"column",gap:10,marginBottom:12}}>
+        <input type="search" value={buscaCliente} onChange={e=>setBuscaCliente(e.target.value)} placeholder={`Buscar entre ${frutasTodas.length+verdurasTodas.length} productos…`} aria-label="Buscar productos"
+          style={{height:44,borderRadius:22,border:"1px solid #dde3da",background:"#fff",padding:"0 18px",fontSize:16,fontFamily:"inherit",color:"inherit",boxSizing:"border-box",width:"100%"}} />
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {([["todos","Todo",""],["fruta","Frutas",String(frutasTodas.length)],["verdura","Verduras",String(verdurasTodas.length)]] as const).map(([cat,txt,n])=>{
+            const chip = (activo: boolean, fondo: string, color: string) => ({height:36,padding:"0 16px",borderRadius:18,border:"none",cursor:"pointer",fontSize:14,fontWeight:700,fontFamily:"inherit",background:activo?fondo:"#eef1ea",color:activo?"#fff":color});
+            const estilo = cat==="fruta" ? chip(catCliente===cat,"#c2581f","#8a3b12") : cat==="verdura" ? chip(catCliente===cat,"#2f6b4f","#24553f") : chip(catCliente===cat,"#1b2a22","#1b2a22");
+            return <button key={cat} type="button" aria-pressed={catCliente===cat} onClick={()=>setCatCliente(cat)} style={estilo}>{txt}{n?` · ${n}`:""}</button>;
+          })}
+        </div>
+        <p style={{margin:0,fontSize:12,color:"#55645b"}}>Ecológico y de temporada: el tamaño y el aspecto varían cada semana.</p>
+      </div>
 
-      {cargando?(<p style={{textAlign:"center",padding:"3rem",color:"#888"}}>Cargando productos...</p>):(
+      {cargando?(<p style={{textAlign:"center",padding:"3rem",color:"#55645b"}}>Cargando productos...</p>):(
         <>
-          <p style={s.categoriaHeader}>🍎 Frutas</p>
-          <div style={s.grid}>{renderGrid(frutas)}</div>
-          <p style={s.categoriaHeader}>🥦 Verduras</p>
-          <div style={s.grid}>{renderGrid(verduras)}</div>
+          {frutas.length>0 && <><h2 style={{margin:"8px 14px 8px",fontSize:20,color:"#8a3b12"}}>Frutas</h2>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))",gap:10,padding:"0 14px"}}>{renderGrid(frutas)}</div></>}
+          {verduras.length>0 && <><h2 style={{margin:"18px 14px 8px",fontSize:20,color:"#24553f"}}>Verduras</h2>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))",gap:10,padding:"0 14px"}}>{renderGrid(verduras)}</div></>}
+          {frutas.length===0 && verduras.length===0 && (
+            <p style={{padding:"1.5rem 14px",textAlign:"center",color:"#55645b",fontSize:14}}>No encontramos «{buscaCliente}». Si lo necesitas, escríbelo abajo en «Otros productos».</p>
+          )}
         </>
       )}
 
