@@ -23,5 +23,7 @@ test("los parecidos no se confunden", () => {
   assert.equal(dibujoDe("Allos tiernos"), "/productos/ajo-tierno.svg");
   assert.equal(dibujoDe("Pemento verde galego"), "/productos/pimiento-verde.svg");
   assert.equal(dibujoDe("Mirabel (ciruela amarela)"), "/productos/ciruela-amarilla.svg");
+  assert.equal(dibujoDe("Coles de Bruselas"), "/productos/col-bruselas.svg");
+  assert.equal(dibujoDe("Coles de bruxelas"), "/productos/col-bruselas.svg");
   assert.equal(dibujoDe("Producto inventado"), null);
 });

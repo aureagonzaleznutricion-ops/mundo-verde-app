@@ -42,6 +42,7 @@ const REGLAS: [RegExp, string][] = [
   [/\buvas?\b/, "uvas"],
   // Verduras
   [/\bacelga/, "acelga"],
+  [/\b(bruselas|bruxelas)/, "col-bruselas"],
   [/\balcachofa/, "alcachofa"],
   [/\b(allos? tiernos?|ajos? tiernos?|ajete)/, "ajo-tierno"],
   [/\b(allos?|ajos?)\b/, "ajo"],
