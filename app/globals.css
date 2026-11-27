@@ -5,13 +5,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Colores que usan los estilos de la app y que no estaban definidos (por eso los campos no tenían borde) */
+  --color-border-tertiary: #b9c4b6;
+  --color-text-secondary: #3b4a41;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f5f6f0;
 }
 
 body {

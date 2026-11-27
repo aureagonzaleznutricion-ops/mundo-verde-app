@@ -648,7 +648,6 @@ export default function ReservasApp() {
         <div style={s.header}>
           <div style={s.headerRow}>
             <div><h1 style={s.titulo}>🌿 Mundo Verde Pontevedra</h1><p style={s.subtitulo}>Reserva de productos frescos · Pontevedra</p></div>
-            <button style={s.badge} onClick={()=>setVista("panel")}>Panel tienda</button>
           </div>
         </div>
         <div style={{margin:"2rem 1rem",background:"#f0faf4",border:"1px solid #2d6a4f",borderRadius:12,padding:"2rem",textAlign:"center"}}>
@@ -662,6 +661,7 @@ export default function ReservasApp() {
             ))}
           </div>
         </div>
+        <p style={{textAlign:"center",marginTop:"2rem"}}><button onClick={()=>setVista("panel")} style={{background:"none",border:"none",color:"#55645b",fontSize:13,textDecoration:"underline",cursor:"pointer",padding:12}}>Acceso tienda</button></p>
       </div>
     );
   }
@@ -671,7 +671,6 @@ export default function ReservasApp() {
       <div style={s.header}>
         <div style={s.headerRow}>
           <div><h1 style={s.titulo}>🌿 Mundo Verde Pontevedra</h1><p style={s.subtitulo}>Reserva de productos frescos · Pontevedra</p></div>
-          <button style={s.badge} onClick={()=>setVista("panel")}>Panel tienda</button>
         </div>
       </div>
 
@@ -739,6 +738,7 @@ export default function ReservasApp() {
         </button>
         <p style={{fontSize:12,color:"#888",textAlign:"center",marginTop:8}}>Te contactaremos en menos de 24h para confirmar disponibilidad</p>
       </div>
+      <p style={{textAlign:"center",marginTop:"2rem"}}><button onClick={()=>setVista("panel")} style={{background:"none",border:"none",color:"#55645b",fontSize:13,textDecoration:"underline",cursor:"pointer",padding:12}}>Acceso tienda</button></p>
     </div>
   );
 }
