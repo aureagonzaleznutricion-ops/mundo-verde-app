@@ -348,15 +348,15 @@ export default function ReservasApp() {
     subtitulo:{margin:"4px 0 0",fontSize:13,opacity:0.85},
     badge:{fontSize:11,background:"rgba(255,255,255,0.2)",padding:"4px 10px",borderRadius:20,cursor:"pointer",border:"none",color:"#fff"},
     seccion:{padding:"0 1rem",marginBottom:"1.5rem"},
-    label:{fontSize:13,fontWeight:500,color:"var(--color-text-secondary)",marginBottom:6,display:"block"},
-    input:{width:"100%",padding:"9px 12px",borderRadius:8,border:"0.5px solid var(--color-border-tertiary)",fontSize:14,boxSizing:"border-box" as const,background:"transparent",color:"inherit"},
-    textarea:{width:"100%",padding:"9px 12px",borderRadius:8,border:"0.5px solid var(--color-border-tertiary)",fontSize:14,boxSizing:"border-box" as const,background:"transparent",color:"inherit",resize:"vertical" as const,lineHeight:1.6,minHeight:80},
+    label:{fontSize:13,fontWeight:600,color:"var(--color-text-secondary)",marginBottom:6,display:"block"},
+    input:{width:"100%",padding:"0 14px",height:48,borderRadius:16,border:"1px solid var(--color-border-tertiary)",fontSize:16,fontFamily:"inherit",boxSizing:"border-box" as const,background:"#fff",color:"inherit"},
+    textarea:{width:"100%",padding:"12px 14px",borderRadius:16,border:"1px solid var(--color-border-tertiary)",fontSize:16,fontFamily:"inherit",boxSizing:"border-box" as const,background:"#fff",color:"inherit",resize:"vertical" as const,lineHeight:1.5,minHeight:80},
     card:{border:"0.5px solid var(--color-border-tertiary)",borderRadius:12,padding:"1.25rem",marginBottom:"1rem",background:"var(--color-background-primary)"},
     btnPrimary:(color?:string)=>({background:color||"#2f6b4f",color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",fontSize:14,fontWeight:500,cursor:"pointer"}),
     btnSecondary:{background:"transparent",border:"0.5px solid var(--color-border-tertiary)",borderRadius:8,padding:"8px 14px",fontSize:13,cursor:"pointer",color:"inherit"},
     btnDanger:{background:"transparent",border:"0.5px solid #e24b4a",borderRadius:8,padding:"8px 14px",fontSize:13,cursor:"pointer",color:"#e24b4a"},
     resumenItem:{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",fontSize:14},
-    confirmBox:{background:"#f0faf4",border:"1px solid #2f6b4f",borderRadius:12,padding:"1.5rem",margin:"1rem",textAlign:"center" as const},
+    confirmBox:{background:"#fff",borderRadius:24,boxShadow:"0 2px 10px rgba(27,42,34,0.06)",padding:"1.5rem 1.25rem",margin:"1rem",textAlign:"center" as const},
     tabs:{display:"flex",gap:4,padding:"0 1rem",marginBottom:"1rem",flexWrap:"wrap" as const},
     tab:{fontSize:12,padding:"6px 12px",borderRadius:20,border:"0.5px solid var(--color-border-tertiary)",cursor:"pointer",background:"transparent",color:"inherit"},
     tabActivo:{background:"#2f6b4f",color:"#fff",border:"1px solid #2f6b4f"},
@@ -366,7 +366,7 @@ export default function ReservasApp() {
     categoriaHeader:{fontSize:12,fontWeight:500,color:"#2f6b4f",textTransform:"uppercase" as const,letterSpacing:1,margin:"1.25rem 0 0.5rem",padding:"0 1rem"},
     error:{color:"#e24b4a",fontSize:12,marginTop:4},
     estadoBadge:(e:string)=>({fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:500,background:e==="confirmado"?"#e8f5e9":e==="gestionado"?"#e3f2fd":"#fff3e0",color:e==="confirmado"?"#2e7d32":e==="gestionado"?"#1565c0":"#e65100"}),
-    totalBox:{background:"#f0faf4",border:"1px solid #2f6b4f",borderRadius:10,padding:"0.75rem 1rem",marginTop:"0.75rem",display:"flex",justifyContent:"space-between",alignItems:"center"},
+    totalBox:{background:"#dcebdf",borderRadius:16,padding:"0.75rem 1rem",marginTop:"0.75rem",display:"flex",justifyContent:"space-between",alignItems:"center"},
   };
 
   if (vista==="confirmacion" && confirmada) {
@@ -376,12 +376,12 @@ export default function ReservasApp() {
       <div style={s.app}>
         <CabeceraCliente texto="Fruta y verdura ecológica · Pontevedra" />
         <div style={s.confirmBox}>
-          <div style={{fontSize:48}}>✅</div>
-          <h2 style={{color:"#2f6b4f",margin:"0.5rem 0"}}>¡Reserva guardada!</h2>
+          <div style={{width:60,height:60,borderRadius:30,background:"#f2a65a",margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#1b2a22" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+          <h2 style={{color:"#1b2a22",margin:"0.75rem 0 0.5rem",fontSize:28}}>¡Reserva guardada!</h2>
           <p style={{color:"#555",fontSize:14,margin:"0.5rem 0 0.5rem"}}>Gracias, <strong>{ultimo.cliente.nombre}</strong>. {ultimo.whatsapp
             ? "Reserva guardada. Estamos enviándote la confirmación por WhatsApp. 💬"
             : "Reserva guardada, pero no hemos podido enviarte el WhatsApp. No hace falta que la repitas."}</p>
-          {ultimo.dia_recogida && <p style={{fontSize:14,fontWeight:600,color:"#2f6b4f",margin:"0 0 1rem"}}>📅 Recogida el {ultimo.dia_recogida}</p>}
+          {ultimo.dia_recogida && <p style={{fontSize:15,fontWeight:700,color:"#2f6b4f",margin:"0 0 1rem"}}>Recogida el {ultimo.dia_recogida.toLowerCase()} en Rúa Peregrina 54</p>}
           <div style={{textAlign:"left",marginBottom:"0.5rem"}}>
             {ultimo.productos.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span><span style={{fontWeight:500}}>{p.unidad===UDS?"se pesa en tienda":`${((p.precio||0)*p.cantidad).toFixed(2)} €`}</span></div>))}
             {ultimo.otros && <p style={{fontSize:13,color:"#666",marginTop:8}}>📝 {ultimo.otros}</p>}
@@ -389,7 +389,7 @@ export default function ReservasApp() {
           </div>
           {totalConfirmacion>0 && (<div style={s.totalBox}><span style={{fontWeight:500}}>Total estimado</span><span style={{fontSize:18,fontWeight:600,color:"#2f6b4f"}}>{totalConfirmacion.toFixed(2)} €</span></div>)}
           {ultimo.productos.some(p=>p.unidad===UDS) && <p style={{fontSize:12,color:"#888",margin:"6px 0 0"}}>Los productos pedidos por unidades no están incluidos en el total: se pesan en tienda.</p>}
-          <button style={{...s.btnSecondary,marginTop:"1rem"}} onClick={nuevaReserva}>Nueva reserva</button>
+          <button style={{...s.btnPrimary(),width:"100%",height:52,borderRadius:26,fontSize:16,fontWeight:700,fontFamily:"inherit",marginTop:"1.25rem"}} onClick={nuevaReserva}>Hacer otra reserva</button>
         </div>
       </div>
     );
@@ -683,16 +683,23 @@ export default function ReservasApp() {
     return (
       <div style={s.app}>
         <CabeceraCliente texto="Fruta y verdura ecológica · Pontevedra" />
-        <div style={{margin:"2rem 1rem",background:"#f0faf4",border:"1px solid #2f6b4f",borderRadius:12,padding:"2rem",textAlign:"center"}}>
-          <div style={{fontSize:48,marginBottom:12}}>🕐</div>
-          <h2 style={{color:"#2f6b4f",margin:"0 0 0.75rem"}}>Reservas cerradas</h2>
-          <p style={{color:"#555",fontSize:14,margin:0}}>{mensajeCierre}</p>
-          <div style={{marginTop:"1.5rem"}}>
-            <p style={{fontSize:13,fontWeight:500,color:"#2f6b4f",marginBottom:8}}>Horario de reservas:</p>
-            {DIAS_SEMANA.filter(d=>horario[d]?.activo).map(d=>(
-              <p key={d} style={{fontSize:13,color:"#555",margin:"4px 0"}}>{DIAS_LABELS[d]}: {horario[d].inicio} – {horario[d].fin}</p>
-            ))}
-          </div>
+        <div style={{padding:"8px 20px 4px",display:"flex",flexDirection:"column",gap:10}}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#a9481a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <h2 style={{margin:0,fontSize:28,lineHeight:1.15}}>Ahora no aceptamos reservas</h2>
+          <p style={{margin:0,fontSize:16,lineHeight:1.5,color:"#3b4a41"}}>{mensajeCierre}</p>
+        </div>
+        <div style={{margin:"1rem 1rem 0",background:"#fff",borderRadius:24,boxShadow:"0 2px 10px rgba(27,42,34,0.06)",padding:"16px 18px"}}>
+          <h3 style={{margin:"0 0 8px",fontSize:17,fontWeight:700}}>Cuándo puedes reservar</h3>
+          {DIAS_SEMANA.filter(d=>horario[d]?.activo).map(d=>(
+            <div key={d} style={{display:"flex",justifyContent:"space-between",fontSize:15,padding:"4px 0"}}><span style={{color:"#55645b"}}>{DIAS_LABELS[d]}</span><span>{horario[d].inicio} – {horario[d].fin}</span></div>
+          ))}
+        </div>
+        <div style={{margin:"0.75rem 1rem 0",background:"#fff",borderRadius:24,boxShadow:"0 2px 10px rgba(27,42,34,0.06)",padding:"16px 18px"}}>
+          <h3 style={{margin:"0 0 4px",fontSize:17,fontWeight:700}}>Mientras tanto, ven a la tienda</h3>
+          <p style={{margin:"0 0 8px",fontSize:14,color:"#55645b"}}>Rúa Peregrina 54, Pontevedra</p>
+          {[["Lun, mié, vie","10:00–14:00 · 17:00–20:45"],["Mar, jue","9:30–14:00 · 17:00–20:45"],["Sábado","10:15–14:15"]].map(([d,h])=>(
+            <div key={d} style={{display:"flex",justifyContent:"space-between",fontSize:14,padding:"3px 0"}}><span style={{color:"#55645b"}}>{d}</span><span>{h}</span></div>
+          ))}
         </div>
         <p style={{textAlign:"center",marginTop:"2rem"}}><button onClick={()=>setVista("panel")} style={{background:"none",border:"none",color:"#55645b",fontSize:13,textDecoration:"underline",cursor:"pointer",padding:12}}>Acceso tienda</button></p>
       </div>
@@ -731,8 +738,8 @@ export default function ReservasApp() {
       {errores.productos&&<p style={{...s.error,padding:"0 1rem",marginTop:8}}>{errores.productos}</p>}
 
       <div style={{...s.seccion,marginTop:"1.5rem"}}>
-        <h3 style={{fontSize:15,fontWeight:500,marginBottom:6}}>🛒 Otros productos</h3>
-        <p style={{fontSize:13,color:"#666",marginBottom:10}}>¿Buscas algo que no está en la lista? Descríbelo aquí.</p>
+        <h3 style={{fontSize:17,fontWeight:700,margin:"0 0 6px"}}>¿Buscas algo que no está en la lista?</h3>
+        <p style={{fontSize:13,color:"#55645b",margin:"0 0 10px"}}>Escríbelo aquí y lo miramos.</p>
         <textarea placeholder="Ej: Aguacates (2 unidades), Remolacha (1 kg)..." value={otrosProductos} onChange={e=>setOtrosProductos(e.target.value)} maxLength={MAX_OTROS} rows={3} style={s.textarea} />
         <p aria-live="polite" style={otrosProductos.length>=MAX_OTROS?s.error:{fontSize:12,color:"#888",textAlign:"right",marginTop:4}}>
           {otrosProductos.length>=MAX_OTROS ? `Has llegado al máximo de ${MAX_OTROS} caracteres. Comprueba que no falte nada al final.` : `${otrosProductos.length} / ${MAX_OTROS}`}
@@ -740,26 +747,26 @@ export default function ReservasApp() {
       </div>
 
       <div style={{...s.seccion,marginTop:"0"}}>
-        <h3 style={{fontSize:15,fontWeight:500,marginBottom:6}}>💬 Observaciones</h3>
-        <p style={{fontSize:13,color:"#666",marginBottom:10}}>¿Tienes algún comentario o indicación para tu pedido?</p>
+        <h3 style={{fontSize:17,fontWeight:700,margin:"0 0 6px"}}>Observaciones</h3>
+        <p style={{fontSize:13,color:"#55645b",margin:"0 0 10px"}}>¿Alguna indicación para tu pedido?</p>
         <textarea placeholder="Ej: Por favor, que las manzanas sean pequeñas..." value={observaciones} onChange={e=>setObservaciones(e.target.value)} maxLength={MAX_OBSERVACIONES} rows={3} style={s.textarea} />
       </div>
 
       {productosSeleccionados.length>0&&(
-        <div id="tu-seleccion" style={{...s.seccion,scrollMarginTop:16}}>
-          <h3 style={{fontSize:15,fontWeight:500,marginBottom:10}}>Tu selección</h3>
+        <div id="tu-seleccion" style={{...s.seccion,scrollMarginTop:16}}><div style={{background:"#fff",borderRadius:24,boxShadow:"0 2px 10px rgba(27,42,34,0.06)",padding:"16px 18px"}}>
+          <h3 style={{fontSize:17,fontWeight:700,margin:"0 0 10px"}}>Tu cesta</h3>
           {productosSeleccionados.map(p=>(<div key={p.id} style={s.resumenItem}><span>{p.emoji} {p.nombre} × {p.cantidad} {p.unidad}</span><span style={{fontWeight:500}}>{p.unidad===UDS?"se pesa en tienda":p.precio?`${(p.precio*p.cantidad).toFixed(2)} €`:"-"}</span></div>))}
           {totalPedido>0&&(<div style={s.totalBox}><span style={{fontWeight:500}}>Total estimado</span><span style={{fontSize:18,fontWeight:600,color:"#2f6b4f"}}>{totalPedido.toFixed(2)} €</span></div>)}
-          {hayPorUnidades&&<p style={{fontSize:12,color:"#888",margin:"6px 0 0"}}>Los productos pedidos por unidades no están incluidos en el total: se pesan en tienda.</p>}
-        </div>
+          {hayPorUnidades&&<p style={{fontSize:12,color:"#55645b",margin:"6px 0 0"}}>Los productos pedidos por unidades no están incluidos en el total: se pesan en tienda.</p>}
+        </div></div>
       )}
 
       <div style={s.seccion}>
-        <h3 style={{fontSize:15,fontWeight:500,marginBottom:10}}>📅 Día de recogida</h3>
+        <h3 style={{fontSize:17,fontWeight:700,margin:"0 0 10px"}}>¿Qué día lo recoges?</h3>
         <div style={{display:"flex",gap:10,marginBottom:6}}>
           {["Martes","Jueves"].map(dia=>(
-            <button key={dia} onClick={()=>setDiaRecogida(dia)} style={{flex:1,padding:"12px",borderRadius:10,border:diaRecogida===dia?"2px solid #2f6b4f":"0.5px solid var(--color-border-tertiary)",background:diaRecogida===dia?"#f0faf4":"transparent",color:diaRecogida===dia?"#2f6b4f":"inherit",fontWeight:diaRecogida===dia?600:400,fontSize:15,cursor:"pointer"}}>
-              📦 {dia}
+            <button key={dia} type="button" aria-pressed={diaRecogida===dia} onClick={()=>setDiaRecogida(dia)} style={{flex:1,height:56,borderRadius:18,border:diaRecogida===dia?"none":"1px solid var(--color-border-tertiary)",background:diaRecogida===dia?"#2f6b4f":"#fff",color:diaRecogida===dia?"#fff":"inherit",fontWeight:diaRecogida===dia?700:600,fontSize:16,fontFamily:"inherit",cursor:"pointer"}}>
+              {diaRecogida===dia?"✓ ":""}{dia}
             </button>
           ))}
         </div>
@@ -767,16 +774,16 @@ export default function ReservasApp() {
       </div>
 
       <div style={s.seccion}>
-        <h3 style={{fontSize:15,fontWeight:500,marginBottom:12}}>Tus datos de contacto</h3>
+        <h3 style={{fontSize:17,fontWeight:700,margin:"0 0 12px"}}>Tus datos</h3>
         {([["nombre","Nombre completo","María García"],["telefono","Teléfono","600 000 000"],["email","Email","maria@email.com"]] as [keyof typeof cliente,string,string][]).map(([campo,lbl,ph])=>(
           <div key={campo} style={{marginBottom:12}}>
             <label style={s.label}>{lbl}</label>
-            <input placeholder={ph} maxLength={campo==="nombre"?MAX_NOMBRE:campo==="telefono"?30:200} value={cliente[campo]} onChange={e=>setCliente(c=>({...c,[campo]:e.target.value}))} style={{...s.input,border:errores[campo]?"0.5px solid #e24b4a":"0.5px solid var(--color-border-tertiary)"}} />
+            <input placeholder={ph} maxLength={campo==="nombre"?MAX_NOMBRE:campo==="telefono"?30:200} value={cliente[campo]} onChange={e=>setCliente(c=>({...c,[campo]:e.target.value}))} type={campo==="email"?"email":campo==="telefono"?"tel":"text"} autoComplete={campo==="nombre"?"name":campo==="telefono"?"tel":"email"} style={{...s.input,border:errores[campo]?"1.5px solid #c62828":"1px solid var(--color-border-tertiary)"}} />
             {errores[campo]&&<p style={s.error}>{errores[campo]}</p>}
           </div>
         ))}
         {avisoEnvio&&<p role="alert" style={{...s.error,fontSize:14,lineHeight:1.5,border:"1px solid #e24b4a",borderRadius:8,padding:"10px 12px",marginBottom:8}}>{avisoEnvio}</p>}
-        <button style={{...s.btnPrimary(),width:"100%",padding:"12px",marginTop:4}} onClick={enviarPedido} disabled={guardando}>
+        <button style={{...s.btnPrimary(),width:"100%",height:54,borderRadius:27,fontSize:17,fontWeight:700,fontFamily:"inherit",marginTop:4,opacity:guardando?0.7:1}} onClick={enviarPedido} disabled={guardando}>
           {guardando?"Enviando...":"Enviar reserva"}
         </button>
         <p style={{fontSize:12,color:"#888",textAlign:"center",marginTop:8}}>Te contactaremos en menos de 24h para confirmar disponibilidad</p>
